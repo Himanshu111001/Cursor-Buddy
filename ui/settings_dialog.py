@@ -47,8 +47,8 @@ class SettingsDialog:
         self.window = tk.Toplevel(self.parent)
         self.window.title("Animated Cursor Buddy")
 
-        # Dimensions strictly designed to fit 720p/1080p laptop displays without cutting off
-        win_w, win_h = 490, 560
+        # Dimensions designed for comfortable breathing room and high-DPI scaling
+        win_w, win_h = 550, 580
         self.window.geometry(f"{win_w}x{win_h}")
         self.window.resizable(False, False)
         self.window.configure(bg=self.BG_DARK)
@@ -75,7 +75,7 @@ class SettingsDialog:
     def _build_ui(self):
         # 1. Header Row
         header = tk.Frame(self.window, bg=self.BG_DARK)
-        header.pack(fill="x", padx=16, pady=(10, 4))
+        header.pack(fill="x", padx=18, pady=(12, 6))
 
         title_row = tk.Frame(header, bg=self.BG_DARK)
         title_row.pack(fill="x")
@@ -83,28 +83,28 @@ class SettingsDialog:
         tk.Label(
             title_row,
             text="✨ Cursor Buddy Control Center",
-            font=("Segoe UI", 13, "bold"),
+            font=("Segoe UI", 12, "bold"),
             fg=self.TEXT_MAIN,
             bg=self.BG_DARK,
         ).pack(side="left")
 
         tk.Label(
             title_row,
-            text="Ctrl+Alt+B to summon",
+            text="Ctrl + Alt + B",
             font=("Segoe UI", 8, "bold"),
             fg=self.ACCENT_PURPLE,
             bg=self.BG_CARD,
-            padx=6,
-            pady=2,
+            padx=8,
+            pady=3,
         ).pack(side="right")
 
         # 2. Live Character Preview Card
         preview_card = tk.Frame(self.window, bg=self.BG_CARD, bd=1, relief="solid")
-        preview_card.pack(fill="x", padx=16, pady=4)
+        preview_card.pack(fill="x", padx=18, pady=4)
 
         self.preview_canvas = tk.Canvas(
             preview_card,
-            width=450,
+            width=490,
             height=85,
             bg="#16171E",
             highlightthickness=0,
@@ -114,7 +114,7 @@ class SettingsDialog:
 
         # 3. Character Selector Grid (Clickable cards)
         char_box = tk.Frame(self.window, bg=self.BG_DARK)
-        char_box.pack(fill="x", padx=16, pady=4)
+        char_box.pack(fill="x", padx=18, pady=4)
 
         tk.Label(
             char_box,
@@ -159,7 +159,7 @@ class SettingsDialog:
 
         # 4. Settings Card (Delay, Speed & Toggles)
         settings_card = tk.Frame(self.window, bg=self.BG_CARD)
-        settings_card.pack(fill="x", padx=16, pady=6)
+        settings_card.pack(fill="x", padx=18, pady=6)
 
         # Delay Slider Row
         slider_row = tk.Frame(settings_card, bg=self.BG_CARD)
@@ -226,11 +226,13 @@ class SettingsDialog:
                 activebackground=self.BG_CARD,
                 activeforeground=self.ACCENT,
                 selectcolor=self.BG_DARK,
-            ).pack(side="left", padx=6)
+            ).pack(side="left", padx=8)
 
-        # Checkboxes (2 columns for compact layout)
+        # Checkboxes (2 columns with balanced weights)
         check_box = tk.Frame(settings_card, bg=self.BG_CARD)
         check_box.pack(fill="x", padx=12, pady=(4, 8))
+        check_box.columnconfigure(0, weight=1)
+        check_box.columnconfigure(1, weight=1)
 
         self.move_cursor_var = tk.BooleanVar(value=self.config.move_physical_cursor)
         self.hide_cursor_var = tk.BooleanVar(value=self.config.hide_default_cursor)
@@ -266,15 +268,15 @@ class SettingsDialog:
                 activeforeground=self.ACCENT,
                 selectcolor=self.BG_DARK,
             )
-            cb.grid(row=r, column=c, sticky="w", padx=4, pady=1)
+            cb.grid(row=r, column=c, sticky="w", padx=6, pady=2)
 
-        # 5. Bottom Actions Bar (Guaranteed visible)
+        # 5. Bottom Actions Bar
         btn_bar = tk.Frame(self.window, bg=self.BG_DARK)
-        btn_bar.pack(fill="x", padx=16, pady=(6, 8))
+        btn_bar.pack(fill="x", padx=18, pady=(8, 12))
 
         test_btn = tk.Button(
             btn_bar,
-            text="🚀 Summon Buddy Now",
+            text="🚀 Summon Now",
             font=("Segoe UI", 9, "bold"),
             bg="#44475A",
             fg=self.ACCENT_PINK,
@@ -282,8 +284,8 @@ class SettingsDialog:
             activeforeground="#FFFFFF",
             relief="flat",
             bd=0,
-            padx=14,
-            pady=7,
+            padx=16,
+            pady=8,
             cursor="hand2",
             command=self._handle_test,
         )
@@ -291,15 +293,15 @@ class SettingsDialog:
 
         save_btn = tk.Button(
             btn_bar,
-            text="✓ Save & Apply (Summon)",
+            text="✓ Save & Apply",
             font=("Segoe UI", 9, "bold"),
             bg=self.ACCENT_GREEN,
             fg="#1E1F29",
             activebackground="#8BE9FD",
             relief="flat",
             bd=0,
-            padx=18,
-            pady=7,
+            padx=20,
+            pady=8,
             cursor="hand2",
             command=self._handle_save,
         )
@@ -322,15 +324,15 @@ class SettingsDialog:
         self.preview_canvas.delete("all")
 
         # Subtle dark grid
-        for x in range(0, 450, 20):
+        for x in range(0, 490, 20):
             self.preview_canvas.create_line(x, 0, x, 85, fill="#1E1F29", width=1)
         for y in range(0, 85, 20):
-            self.preview_canvas.create_line(0, y, 450, y, fill="#1E1F29", width=1)
+            self.preview_canvas.create_line(0, y, 490, y, fill="#1E1F29", width=1)
 
-        # Render preview character
+        # Render preview character centered
         self.preview_character.draw(
             canvas=self.preview_canvas,
-            cx=225,
+            cx=245,
             cy=42,
             state="wandering",
             facing_right=True,
@@ -362,7 +364,7 @@ class SettingsDialog:
         if self.on_save:
             self.on_save(self.config)
 
-        # Immediately summon buddy so user sees their chosen character in action!
+        # Immediately summon buddy so user sees their new character in action!
         if self.on_test:
             self.on_test()
 
