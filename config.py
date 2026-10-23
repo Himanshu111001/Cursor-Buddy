@@ -15,8 +15,8 @@ class BuddyConfig:
     idle_timeout_seconds: int = 10
     character: str = "robot"  # 'robot', 'ghost', 'cat', 'fairy'
     movement_speed: str = "normal"  # 'slow', 'normal', 'fast'
-    move_physical_cursor: bool = True
-    hide_default_cursor: bool = True
+    move_physical_cursor: bool = False  # Keep False so user's cursor is NEVER hijacked
+    hide_default_cursor: bool = False   # Keep False so user's cursor is NEVER hidden
     keep_screen_awake: bool = True
     show_particles: bool = True
     show_reactions: bool = True

@@ -21,8 +21,14 @@ class IdleDetector:
         self._user32 = ctypes.windll.user32
         self._kernel32 = ctypes.windll.kernel32
 
+    def get_last_input_tick(self) -> int:
+        """Returns the raw Windows tick count when the last hardware input occurred."""
+        if self._user32.GetLastInputInfo(ctypes.byref(self._last_input_info)):
+            return self._last_input_info.dwTime
+        return 0
+
     def get_idle_ms(self) -> int:
-        """Returns the number of milliseconds since the last hardware user input (keyboard or mouse)."""
+        """Returns the number of milliseconds since the last hardware user input (keyboard, mouse, touch)."""
         if self._user32.GetLastInputInfo(ctypes.byref(self._last_input_info)):
             current_tick = self._kernel32.GetTickCount()
             # Handle 49.7 day tick count rollover

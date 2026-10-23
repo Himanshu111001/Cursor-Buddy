@@ -1,7 +1,6 @@
 """
 Comprehensive System Cursor Manager for Windows.
-Hides ALL native cursor variants (arrow, hand pointer, I-beam, resize, busy, etc.)
-while keeping physical mouse movement and interactive hover states fully active.
+Guarantees the user's cursor is NEVER blocked or lost under any circumstance.
 Restores all standard Windows cursors instantly upon return of user input or application exit.
 """
 
@@ -41,6 +40,9 @@ class CursorHider:
         atexit.register(self.restore)
         self._setup_ctrl_handler()
 
+        # Unconditionally restore standard Windows cursors immediately on startup
+        self.restore()
+
     def _setup_ctrl_handler(self):
         try:
             handler_proto = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint)
@@ -62,9 +64,7 @@ class CursorHider:
 
     def hide(self):
         """
-        Replaces every system cursor variant with a transparent cursor.
-        Physical mouse events (WM_MOUSEMOVE, hover effects, CSS styles) continue
-        to trigger perfectly on underlying applications, but no native cursor is rendered.
+        Replaces system cursor variants with transparent cursors.
         """
         if self.is_hidden:
             return
@@ -73,7 +73,6 @@ class CursorHider:
             for cid in OCR_CURSOR_IDS:
                 h_blank = self._create_blank_cursor()
                 if h_blank:
-                    # SetSystemCursor replaces the cursor and takes ownership of h_blank
                     if not self.user32.SetSystemCursor(h_blank, cid):
                         self.user32.DestroyCursor(h_blank)
 
@@ -85,11 +84,11 @@ class CursorHider:
         """
         Instantly restores all standard Windows system cursors to system defaults
         using official SPI_SETCURSORS API.
+        Always executed unconditionally.
         """
-        if self.is_hidden:
-            try:
-                self.user32.SystemParametersInfoW(win32con.SPI_SETCURSORS, 0, None, 0)
-            except Exception as e:
-                print(f"[CursorHider] Error restoring system cursors: {e}")
-            finally:
-                self.is_hidden = False
+        try:
+            self.user32.SystemParametersInfoW(win32con.SPI_SETCURSORS, 0, None, 0)
+        except Exception as e:
+            print(f"[CursorHider] Error restoring system cursors: {e}")
+        finally:
+            self.is_hidden = False

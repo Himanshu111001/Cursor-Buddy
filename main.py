@@ -47,8 +47,9 @@ class CursorBuddyApp:
         self.is_active = False
         self.is_paused = False
         self.force_wake = initial_test_mode
+        self.was_manual_wake = False
 
-        # System services
+        # System services (CursorHider restores standard cursors immediately on init)
         self.idle_detector = IdleDetector()
         self.media_detector = MediaDetector()
         self.power_manager = PowerManager()
@@ -99,6 +100,9 @@ class CursorBuddyApp:
         self.activate_time = 0.0
         self.expected_cursor_x = 0
         self.expected_cursor_y = 0
+        self.last_user_cursor_x = 0
+        self.last_user_cursor_y = 0
+        self.activation_input_tick = 0
 
         # Start background tray
         self.tray.start()
@@ -162,6 +166,10 @@ class CursorBuddyApp:
         self.movement.set_bounds(bounds)
 
         cur_x, cur_y = self.idle_detector.get_cursor_position()
+        self.last_user_cursor_x = cur_x
+        self.last_user_cursor_y = cur_y
+        self.activation_input_tick = self.idle_detector.get_last_input_tick()
+
         self.movement.reset_to_position(cur_x, cur_y)
         self.expected_cursor_x = int(self.movement.x)
         self.expected_cursor_y = int(self.movement.y)
@@ -176,6 +184,8 @@ class CursorBuddyApp:
 
         if self.config.hide_default_cursor and self.config.move_physical_cursor:
             self.cursor_hider.hide()
+        else:
+            self.cursor_hider.restore()
 
         # Position and pre-render overlay window BEFORE making it visible
         self.overlay.show(
@@ -186,11 +196,12 @@ class CursorBuddyApp:
         )
 
         self.is_active = True
+        self.was_manual_wake = self.force_wake
         self.force_wake = False
         self.tray.update_state(is_active=True, is_paused=self.is_paused)
         self.media_detector.notify_internal_sound(0.8)
         self.sound.play_wake()
-        print(f"[Buddy] ✨ Activated smoothly at cursor position ({int(self.movement.x)}, {int(self.movement.y)})")
+        print(f"[Buddy] ✨ Activated smoothly at ({int(self.movement.x)}, {int(self.movement.y)})")
 
     def _deactivate_buddy(self):
         """Instantly restores normal mouse control and hides the companion."""
@@ -199,10 +210,11 @@ class CursorBuddyApp:
         self.power_manager.restore_sleep()
         self.is_active = False
         self.force_wake = False
+        self.was_manual_wake = False
         self.tray.update_state(is_active=False, is_paused=self.is_paused)
         self.media_detector.notify_internal_sound(0.8)
         self.sound.play_sleep()
-        print("[Buddy] 👋 User returned! Restoring standard cursor control.")
+        print("[Buddy] 👋 User returned! Standard cursor active.")
 
     def _tick(self):
         current_time = time.time()
@@ -228,23 +240,33 @@ class CursorBuddyApp:
                 elif not is_media and idle_seconds >= self.config.idle_timeout_seconds:
                     self._activate_buddy()
             else:
-                # Active mode: Check if user physically touched mouse/keyboard, or media began playing
+                # Active mode: Check if user physically touched mouse, keyboard, or touchscreen
                 user_returned = False
 
-                # Grace period: ignore input within first 600ms of activation to prevent premature dismissal
-                if (current_time - self.activate_time) > 0.6:
-                    # 1. Hardware input event within last 250ms
-                    if self.idle_detector.is_user_active(threshold_ms=250):
+                current_tick = self.idle_detector.get_last_input_tick()
+                real_x, real_y = self.idle_detector.get_cursor_position()
+
+                # For manual hotkey summon, give a brief 250ms window so key-release doesn't dismiss
+                is_recent_manual = self.was_manual_wake and (current_time - self.activate_time < 0.25)
+
+                if not is_recent_manual:
+                    # 1. Any hardware input (keystroke, mouse click, touchscreen tap)
+                    if current_tick != self.activation_input_tick:
                         user_returned = True
 
-                    # 2. Physical mouse moved away from where companion placed it
-                    if self.config.move_physical_cursor:
-                        real_x, real_y = self.idle_detector.get_cursor_position()
-                        deviation = math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y)
-                        if deviation > 20:  # Physical nudge detected
+                    # 2. Any physical mouse movement or touchscreen swipe
+                    if not self.config.move_physical_cursor:
+                        # Free-roam mode: any cursor move by 2 pixels immediately dismisses buddy
+                        mouse_delta = math.hypot(real_x - self.last_user_cursor_x, real_y - self.last_user_cursor_y)
+                        if mouse_delta >= 2:
+                            user_returned = True
+                    else:
+                        # Guided cursor mode: physical nudge away from companion dismisses immediately
+                        nudge = math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y)
+                        if nudge >= 3:
                             user_returned = True
 
-                    # 3. Media playback or fullscreen video began while companion was roaming
+                    # 3. Media or fullscreen playback started
                     if is_media and not self.force_wake:
                         user_returned = True
 
@@ -254,7 +276,7 @@ class CursorBuddyApp:
                     # Update buddy movement and render frame
                     bx, by, state = self.movement.update(dt)
 
-                    # Move physical Windows cursor if enabled
+                    # Move physical Windows cursor ONLY if explicitly enabled
                     if self.config.move_physical_cursor:
                         self.idle_detector.set_cursor_position(bx, by)
                         self.expected_cursor_x = int(bx)
