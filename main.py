@@ -113,6 +113,11 @@ class CursorBuddyApp:
         self.overlay.set_character(self.active_character)
         self.movement.set_speed_profile(self.config.movement_speed)
         self.sound.enabled = self.config.sound_enabled
+        if self.is_active:
+            if self.config.hide_default_cursor and self.config.move_physical_cursor:
+                self.cursor_hider.hide()
+            else:
+                self.cursor_hider.restore()
         print(f"[Buddy] Updated settings: character={self.config.character}, timeout={self.config.idle_timeout_seconds}s")
 
     def _on_hotkey_threadsafe(self):
