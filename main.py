@@ -28,6 +28,7 @@ from system import (
     PowerManager,
     SingleInstanceManager,
     SoundManager,
+    get_desktop_work_area,
 )
 from ui import SettingsDialog, SystemTrayManager
 
@@ -55,14 +56,11 @@ class CursorBuddyApp:
         self.hotkey = GlobalHotkeyListener(on_hotkey=self._on_hotkey_threadsafe)
         self.hotkey.start()
 
-        # Virtual screen metrics
-        vx = win32api.GetSystemMetrics(win32con.SM_XVIRTUALSCREEN)
-        vy = win32api.GetSystemMetrics(win32con.SM_YVIRTUALSCREEN)
-        vw = win32api.GetSystemMetrics(win32con.SM_CXVIRTUALSCREEN)
-        vh = win32api.GetSystemMetrics(win32con.SM_CYVIRTUALSCREEN)
+        # Desktop work area bounds (excluding Windows taskbar)
+        work_bounds = get_desktop_work_area()
 
-        # AI Movement Engine
-        self.movement = MovementEngine(screen_w=vw, screen_h=vh)
+        # AI Movement Engine confined strictly inside screen work area
+        self.movement = MovementEngine(bounds=work_bounds)
         self.movement.set_speed_profile(self.config.movement_speed)
 
         # Tkinter Root & Overlay Window
@@ -149,10 +147,13 @@ class CursorBuddyApp:
 
     def _activate_buddy(self):
         """Wakes the animated companion and begins autonomous roaming."""
+        bounds = get_desktop_work_area()
+        self.movement.set_bounds(bounds)
+
         cur_x, cur_y = self.idle_detector.get_cursor_position()
         self.movement.reset_to_position(cur_x, cur_y)
-        self.expected_cursor_x = cur_x
-        self.expected_cursor_y = cur_y
+        self.expected_cursor_x = int(self.movement.x)
+        self.expected_cursor_y = int(self.movement.y)
 
         if self.config.keep_screen_awake:
             self.power_manager.prevent_sleep(keep_display_on=True)

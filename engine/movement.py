@@ -1,11 +1,10 @@
 """
 Autonomous movement and behavioral AI engine for the desktop companion.
-Generates organic, entertaining trajectories, curiosity pauses, and playful behaviors.
+Generates organic, entertaining trajectories strictly confined within usable screen bounds.
 """
 
 import math
 import random
-import time
 
 
 class MovementEngine:
@@ -15,14 +14,15 @@ class MovementEngine:
     STATE_DASHING = "dashing"
     STATE_NAPPING = "napping"
 
-    def __init__(self, screen_w: int, screen_h: int):
-        self.screen_w = screen_w
-        self.screen_h = screen_h
-        self.margin = 60
+    def __init__(self, bounds: tuple[int, int, int, int]):
+        """
+        bounds: (min_x, min_y, max_x, max_y) of usable work area (excluding taskbar).
+        """
+        self.set_bounds(bounds)
 
         # Current position & physics
-        self.x = screen_w / 2.0
-        self.y = screen_h / 2.0
+        self.x = (self.min_x + self.max_x) / 2.0
+        self.y = (self.min_y + self.max_y) / 2.0
         self.vx = 0.0
         self.vy = 0.0
         self.facing_right = True
@@ -39,21 +39,29 @@ class MovementEngine:
         self.total_idle_time = 0.0
 
         # Speed configurations
-        self.base_speed = 4.5
+        self.base_speed = 4.0
         self.set_speed_profile("normal")
+
+    def set_bounds(self, bounds: tuple[int, int, int, int]):
+        left, top, right, bottom = bounds
+        self.margin = 55  # Safe distance inside screen bezels and above taskbar
+        self.min_x = left + self.margin
+        self.min_y = top + self.margin
+        self.max_x = max(self.min_x + 100, right - self.margin)
+        self.max_y = max(self.min_y + 100, bottom - self.margin)
 
     def set_speed_profile(self, profile: str):
         if profile == "slow":
-            self.base_speed = 2.5
+            self.base_speed = 2.2
         elif profile == "fast":
-            self.base_speed = 7.5
+            self.base_speed = 6.5
         else:  # normal
-            self.base_speed = 4.5
+            self.base_speed = 3.8
 
     def reset_to_position(self, x: float, y: float):
-        """Reset companion to a specific position (e.g. current mouse position)."""
-        self.x = min(max(x, self.margin), self.screen_w - self.margin)
-        self.y = min(max(y, self.margin), self.screen_h - self.margin)
+        """Reset companion to a specific position (e.g. current mouse position), strictly clamped."""
+        self.x = min(max(x, self.min_x), self.max_x)
+        self.y = min(max(y, self.min_y), self.max_y)
         self.vx = 0.0
         self.vy = 0.0
         self.state = self.STATE_WANDERING
@@ -62,18 +70,18 @@ class MovementEngine:
         self._pick_new_target()
 
     def _pick_new_target(self):
-        """Pick an engaging destination on screen."""
+        """Pick an engaging destination strictly within screen work area bounds."""
         dice = random.random()
         if dice < 0.25:
-            # Peek near a corner or screen edge
-            corner_x = random.choice([self.margin + 40, self.screen_w - self.margin - 40])
-            corner_y = random.choice([self.margin + 40, self.screen_h - self.margin - 40])
-            self.target_x = corner_x + random.uniform(-20, 20)
-            self.target_y = corner_y + random.uniform(-20, 20)
+            # Peek near a corner of the usable screen area
+            corner_x = random.choice([self.min_x + 30, self.max_x - 30])
+            corner_y = random.choice([self.min_y + 30, self.max_y - 30])
+            self.target_x = min(max(corner_x + random.uniform(-15, 15), self.min_x), self.max_x)
+            self.target_y = min(max(corner_y + random.uniform(-15, 15), self.min_y), self.max_y)
         else:
-            # Wander anywhere within comfortable desktop bounds
-            self.target_x = random.uniform(self.margin, self.screen_w - self.margin)
-            self.target_y = random.uniform(self.margin, self.screen_h - self.margin)
+            # Wander anywhere inside work area
+            self.target_x = random.uniform(self.min_x, self.max_x)
+            self.target_y = random.uniform(self.min_y, self.max_y)
 
     def update(self, dt: float) -> tuple[float, float, str]:
         """
@@ -92,13 +100,11 @@ class MovementEngine:
         if self.state == self.STATE_WANDERING:
             self._step_towards_target(max_speed=self.base_speed)
         elif self.state == self.STATE_DASHING:
-            self._step_towards_target(max_speed=self.base_speed * 1.8)
+            self._step_towards_target(max_speed=self.base_speed * 1.6)
         elif self.state == self.STATE_INSPECTING:
-            # Gently decelerate and look around
             self.vx *= 0.85
             self.vy *= 0.85
         elif self.state == self.STATE_NAPPING:
-            # Stay nearly still with a gentle breathing rhythm
             self.vx *= 0.80
             self.vy *= 0.80
 
@@ -106,9 +112,9 @@ class MovementEngine:
         self.x += self.vx
         self.y += self.vy
 
-        # Keep strictly within screen bounds
-        self.x = min(max(self.x, self.margin), self.screen_w - self.margin)
-        self.y = min(max(self.y, self.margin), self.screen_h - self.margin)
+        # Strictly clamp within bezels and above taskbar
+        self.x = min(max(self.x, self.min_x), self.max_x)
+        self.y = min(max(self.y, self.min_y), self.max_y)
 
         # Update facing direction
         if abs(self.vx) > 0.2:
@@ -121,7 +127,7 @@ class MovementEngine:
         dy = self.target_y - self.y
         dist = math.hypot(dx, dy)
 
-        if dist < 35:
+        if dist < 25:
             # Close enough to target, decide next move
             self.state = self.STATE_INSPECTING
             self.state_timer = 0.0
@@ -129,28 +135,25 @@ class MovementEngine:
             self._pick_new_target()
             return
 
-        # Desired velocity vector (steering towards target)
         desired_vx = (dx / dist) * max_speed
         desired_vy = (dy / dist) * max_speed
 
-        # Smooth acceleration steering (lerp velocity)
         steer_rate = 0.12
         self.vx += (desired_vx - self.vx) * steer_rate
         self.vy += (desired_vy - self.vy) * steer_rate
 
     def _transition_state(self):
         self.state_timer = 0.0
-        # If idle for a long time (> 35s), character has a chance to nap
+        # If idle for a long time (> 35s), chance to take a nap
         if self.total_idle_time > 35.0 and random.random() < 0.4:
             self.state = self.STATE_NAPPING
             self.state_duration = random.uniform(5.0, 9.0)
             return
 
-        # Choose next playful action
         choice = random.random()
         if choice < 0.55:
             self.state = self.STATE_WANDERING
-            self.state_duration = random.uniform(2.5, 5.0)
+            self.state_duration = random.uniform(2.5, 4.5)
         elif choice < 0.80:
             self.state = self.STATE_INSPECTING
             self.state_duration = random.uniform(1.5, 3.0)

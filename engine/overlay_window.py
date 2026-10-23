@@ -1,11 +1,10 @@
 """
-Transparent click-through overlay window for Windows desktop.
-Renders the animated character and visual particles without interrupting user workflow.
+Compact floating transparent sprite overlay window.
+Moves seamlessly with the companion at hardware level without full-screen flicker.
 """
 
 import math
 import tkinter as tk
-import win32api
 import win32con
 import win32gui
 from characters.base_character import BaseCharacter
@@ -14,7 +13,8 @@ from engine.particles import ParticleSystem
 
 
 class OverlayWindow:
-    CHROMA_KEY = "#010101"  # Deep black color used as transparent background
+    CHROMA_KEY = "#010101"
+    WINDOW_SIZE = 128  # Compact 128x128 sprite box
 
     def __init__(self, root: tk.Tk, config: BuddyConfig, character: BaseCharacter, particles: ParticleSystem):
         self.root = root
@@ -23,30 +23,23 @@ class OverlayWindow:
         self.particles = particles
         self.is_visible = False
 
-        # Virtual screen metrics for single or multi-monitor setups
-        self.vx = win32api.GetSystemMetrics(win32con.SM_XVIRTUALSCREEN)
-        self.vy = win32api.GetSystemMetrics(win32con.SM_YVIRTUALSCREEN)
-        self.vw = win32api.GetSystemMetrics(win32con.SM_CXVIRTUALSCREEN)
-        self.vh = win32api.GetSystemMetrics(win32con.SM_CYVIRTUALSCREEN)
-
-        # Configure root as a borderless transparent overlay
+        # Borderless transparent sprite window
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
         self.root.attributes("-transparentcolor", self.CHROMA_KEY)
-        self.root.geometry(f"{self.vw}x{self.vh}+{self.vx}+{self.vy}")
+        self.root.geometry(f"{self.WINDOW_SIZE}x{self.WINDOW_SIZE}+0+0")
 
-        # High-performance canvas
         self.canvas = tk.Canvas(
             self.root,
-            width=self.vw,
-            height=self.vh,
+            width=self.WINDOW_SIZE,
+            height=self.WINDOW_SIZE,
             bg=self.CHROMA_KEY,
             highlightthickness=0,
             bd=0,
         )
         self.canvas.pack(fill="both", expand=True)
 
-        # Apply native Windows extended styles (Click-through, No Alt-Tab, No Focus Steal)
+        self._hwnd = self.root.winfo_id()
         self._apply_win32_styles()
 
         # Start hidden
@@ -58,9 +51,9 @@ class OverlayWindow:
         target_style = (
             gwl
             | win32con.WS_EX_LAYERED
-            | win32con.WS_EX_TRANSPARENT  # Passes all mouse clicks through to whatever is underneath
-            | win32con.WS_EX_TOOLWINDOW    # Hides from Alt-Tab task switcher
-            | win32con.WS_EX_NOACTIVATE    # Prevents stealing keyboard/window focus
+            | win32con.WS_EX_TRANSPARENT  # Click-through: mouse clicks pass to whatever is beneath
+            | win32con.WS_EX_TOOLWINDOW    # Hides from Alt-Tab
+            | win32con.WS_EX_NOACTIVATE    # Never steals keyboard/mouse focus
         )
         win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, target_style)
 
@@ -70,7 +63,6 @@ class OverlayWindow:
     def show(self):
         if not self.is_visible:
             self.root.deiconify()
-            self.root.lift()
             self._apply_win32_styles()
             self.is_visible = True
 
@@ -85,54 +77,67 @@ class OverlayWindow:
         if not self.is_visible:
             return
 
+        # Position the 128x128 window directly centered on the companion coordinate
+        win_x = int(x - self.WINDOW_SIZE / 2)
+        win_y = int(y - self.WINDOW_SIZE / 2)
+
+        win32gui.SetWindowPos(
+            self.root.winfo_id(),
+            win32con.HWND_TOPMOST,
+            win_x,
+            win_y,
+            0,
+            0,
+            win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW,
+        )
+
         self.canvas.delete("all")
 
-        # Convert virtual screen coordinates to canvas local coordinates
-        canvas_x = x - self.vx
-        canvas_y = y - self.vy
+        # Center inside the 128x128 canvas
+        cx = self.WINDOW_SIZE / 2
+        cy = self.WINDOW_SIZE / 2
 
-        # 1. Update and draw particles
+        # 1. Particles (rendered relative to center)
         if self.config.show_particles:
             self.particles.update()
             for p in self.particles.particles:
-                px = p.x - self.vx
-                py = p.y - self.vy
-                alpha_size = max(1.0, p.size * p.life)
+                px = p.x - win_x
+                py = p.y - win_y
+                if 0 <= px <= self.WINDOW_SIZE and 0 <= py <= self.WINDOW_SIZE:
+                    alpha_size = max(1.0, p.size * p.life)
+                    if p.kind == "circle":
+                        self.canvas.create_oval(
+                            px - alpha_size / 2, py - alpha_size / 2,
+                            px + alpha_size / 2, py + alpha_size / 2,
+                            fill=p.color, outline=""
+                        )
+                    elif p.kind == "star":
+                        r = alpha_size
+                        pts = [
+                            px, py - r,
+                            px + r * 0.3, py - r * 0.3,
+                            px + r, py,
+                            px + r * 0.3, py + r * 0.3,
+                            px, py + r,
+                            px - r * 0.3, py + r * 0.3,
+                            px - r, py,
+                            px - r * 0.3, py - r * 0.3,
+                        ]
+                        self.canvas.create_polygon(pts, fill=p.color, outline="")
+                    elif p.kind == "text":
+                        font_size = max(8, int(p.size * p.life))
+                        self.canvas.create_text(
+                            px, py,
+                            text=p.text,
+                            fill=p.color,
+                            font=("Segoe UI", font_size, "bold")
+                        )
 
-                if p.kind == "circle":
-                    self.canvas.create_oval(
-                        px - alpha_size / 2, py - alpha_size / 2,
-                        px + alpha_size / 2, py + alpha_size / 2,
-                        fill=p.color, outline=""
-                    )
-                elif p.kind == "star":
-                    # Draw sparkling 4-pointed star
-                    r = alpha_size
-                    pts = [
-                        px, py - r,
-                        px + r * 0.3, py - r * 0.3,
-                        px + r, py,
-                        px + r * 0.3, py + r * 0.3,
-                        px, py + r,
-                        px - r * 0.3, py + r * 0.3,
-                        px - r, py,
-                        px - r * 0.3, py - r * 0.3,
-                    ]
-                    self.canvas.create_polygon(pts, fill=p.color, outline="")
-                elif p.kind == "text":
-                    font_size = max(8, int(p.size * p.life))
-                    self.canvas.create_text(
-                        px, py,
-                        text=p.text,
-                        fill=p.color,
-                        font=("Segoe UI", font_size, "bold")
-                    )
-
-        # 2. Draw active character
+        # 2. Draw Character at center
         self.character.draw(
             canvas=self.canvas,
-            cx=canvas_x,
-            cy=canvas_y,
+            cx=cx,
+            cy=cy,
             state=state,
             facing_right=facing_right,
             time_sec=time_sec,
@@ -140,13 +145,12 @@ class OverlayWindow:
             particles=self.particles if self.config.show_particles else None,
         )
 
-        # 3. Optional status bubble (e.g. state reactions)
+        # 3. Emote reaction bubble (? or !)
         if self.config.show_reactions and state == "inspecting":
-            bubble_y = canvas_y - 45 * self.config.buddy_scale
             self.canvas.create_text(
-                canvas_x + (16 if facing_right else -16),
-                bubble_y,
+                cx + (14 if facing_right else -14),
+                cy - 38 * self.config.buddy_scale,
                 text="?",
                 fill="#FFD700",
-                font=("Segoe UI", 16, "bold"),
+                font=("Segoe UI", 15, "bold"),
             )

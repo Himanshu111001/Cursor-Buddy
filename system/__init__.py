@@ -3,6 +3,7 @@ from .autostart import is_autostart_enabled, set_autostart
 from .hotkey import GlobalHotkeyListener
 from .idle_detector import IdleDetector
 from .power_manager import PowerManager
+from .screen import get_desktop_work_area
 from .single_instance import SingleInstanceManager
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "set_autostart",
     "GlobalHotkeyListener",
     "SingleInstanceManager",
+    "get_desktop_work_area",
 ]
