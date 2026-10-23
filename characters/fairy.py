@@ -3,6 +3,8 @@ Starlight Fairy / Sparkle Orb character.
 A luminous magical companion with fluttering iridescent wings, glowing aura, and star trails.
 """
 
+from __future__ import annotations
+
 import math
 import random
 import tkinter as tk

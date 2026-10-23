@@ -3,6 +3,8 @@ Neko the Desktop Cat character.
 A playful kitten companion with animated paws, swishing tail, and whiskers.
 """
 
+from __future__ import annotations
+
 import math
 import random
 import tkinter as tk

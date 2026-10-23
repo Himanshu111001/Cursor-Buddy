@@ -3,6 +3,8 @@ Sparky the Cyber Bot character.
 A playful futuristic companion with LED eyes, floating thrusters, and antenna.
 """
 
+from __future__ import annotations
+
 import math
 import random
 import tkinter as tk

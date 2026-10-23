@@ -3,6 +3,8 @@ Mochi the Ghost character.
 An adorable, squishy ghost companion with animated wavy skirts and kawaii expressions.
 """
 
+from __future__ import annotations
+
 import math
 import random
 import tkinter as tk

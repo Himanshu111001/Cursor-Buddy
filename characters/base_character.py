@@ -2,6 +2,8 @@
 Base abstract class for all Animated Cursor Buddies.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 import tkinter as tk
