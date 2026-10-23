@@ -37,10 +37,10 @@ from ui import SettingsDialog, SystemTrayManager
 
 class CursorBuddyApp:
     def __init__(self, initial_test_mode: bool = False, open_settings_on_start: bool = False):
-        # Single-instance check
+        # Atomic Named Mutex Single-instance check
         self.single_instance = SingleInstanceManager()
         if not self.single_instance.check_or_register(on_wake_signal=self._open_settings_threadsafe):
-            # Another instance is already running and was signaled to focus.
+            # Another instance is already running and was signaled to bring settings forward.
             sys.exit(0)
 
         self.config = BuddyConfig.load()
@@ -246,29 +246,32 @@ class CursorBuddyApp:
                 current_tick = self.idle_detector.get_last_input_tick()
                 real_x, real_y = self.idle_detector.get_cursor_position()
 
-                # For manual hotkey summon, give a brief 250ms window so key-release doesn't dismiss
-                is_recent_manual = self.was_manual_wake and (current_time - self.activate_time < 0.25)
+                # For manual test summon, allow 0.35s for mouse button release
+                is_recent_manual = self.was_manual_wake and (current_time - self.activate_time < 0.35)
 
                 if not is_recent_manual:
-                    # 1. Any hardware input (keystroke, mouse click, touchscreen tap)
+                    # 1. Any hardware input (keystroke, mouse button, touchscreen tap)
                     if current_tick != self.activation_input_tick:
                         user_returned = True
 
-                    # 2. Any physical mouse movement or touchscreen swipe
-                    if not self.config.move_physical_cursor:
-                        # Free-roam mode: any cursor move by 2 pixels immediately dismisses buddy
-                        mouse_delta = math.hypot(real_x - self.last_user_cursor_x, real_y - self.last_user_cursor_y)
-                        if mouse_delta >= 2:
+                    # 2. Physical mouse movement away from buddy position
+                    if self.config.move_physical_cursor:
+                        nudge = math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y)
+                        if nudge >= 4:  # Physical hand movement detected
                             user_returned = True
                     else:
-                        # Guided cursor mode: physical nudge away from companion dismisses immediately
-                        nudge = math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y)
-                        if nudge >= 3:
+                        mouse_delta = math.hypot(real_x - self.last_user_cursor_x, real_y - self.last_user_cursor_y)
+                        if mouse_delta >= 3:
                             user_returned = True
 
-                    # 3. Media or fullscreen playback started
-                    if is_media and not self.force_wake:
+                    # 3. User entered fullscreen video or game
+                    if self.config.pause_on_fullscreen and self.media_detector.is_fullscreen_active():
                         user_returned = True
+                else:
+                    # During manual summon grace period, react to intentional mouse drag
+                    if self.config.move_physical_cursor:
+                        if math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y) >= 20:
+                            user_returned = True
 
                 if user_returned and not self.force_wake:
                     self._deactivate_buddy()
@@ -276,7 +279,7 @@ class CursorBuddyApp:
                     # Update buddy movement and render frame
                     bx, by, state = self.movement.update(dt)
 
-                    # Move physical Windows cursor ONLY if explicitly enabled
+                    # Move physical Windows cursor if enabled
                     if self.config.move_physical_cursor:
                         self.idle_detector.set_cursor_position(bx, by)
                         self.expected_cursor_x = int(bx)
