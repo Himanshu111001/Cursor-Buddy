@@ -233,6 +233,7 @@ class SettingsDialog:
         check_box.pack(fill="x", padx=12, pady=(4, 8))
 
         self.move_cursor_var = tk.BooleanVar(value=self.config.move_physical_cursor)
+        self.hide_cursor_var = tk.BooleanVar(value=self.config.hide_default_cursor)
         self.keep_awake_var = tk.BooleanVar(value=self.config.keep_screen_awake)
         self.particles_var = tk.BooleanVar(value=self.config.show_particles)
         self.sound_var = tk.BooleanVar(value=self.config.sound_enabled)
@@ -240,6 +241,7 @@ class SettingsDialog:
 
         toggles = [
             ("Guide mouse cursor", self.move_cursor_var),
+            ("Hide default mouse pointer", self.hide_cursor_var),
             ("Keep display awake", self.keep_awake_var),
             ("Show particle effects", self.particles_var),
             ("Play wake/sleep chimes", self.sound_var),
@@ -340,6 +342,7 @@ class SettingsDialog:
         self.config.idle_timeout_seconds = self.timeout_var.get()
         self.config.movement_speed = self.speed_var.get()
         self.config.move_physical_cursor = self.move_cursor_var.get()
+        self.config.hide_default_cursor = self.hide_cursor_var.get()
         self.config.keep_screen_awake = self.keep_awake_var.get()
         self.config.show_particles = self.particles_var.get()
         self.config.sound_enabled = self.sound_var.get()

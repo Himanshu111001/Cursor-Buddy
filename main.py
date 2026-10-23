@@ -23,6 +23,7 @@ from characters import get_character
 from config import BuddyConfig
 from engine import MovementEngine, OverlayWindow, ParticleSystem
 from system import (
+    CursorHider,
     GlobalHotkeyListener,
     IdleDetector,
     PowerManager,
@@ -49,6 +50,7 @@ class CursorBuddyApp:
         # System services
         self.idle_detector = IdleDetector()
         self.power_manager = PowerManager()
+        self.cursor_hider = CursorHider()
         self.particles = ParticleSystem()
         self.sound = SoundManager(enabled=self.config.sound_enabled)
 
@@ -161,6 +163,9 @@ class CursorBuddyApp:
             self.power_manager.prevent_sleep(keep_display_on=True)
 
         self.overlay.show()
+        if self.config.hide_default_cursor and self.config.move_physical_cursor:
+            self.cursor_hider.hide()
+
         self.is_active = True
         self.force_wake = False
         self.activate_time = time.time()
@@ -170,6 +175,7 @@ class CursorBuddyApp:
 
     def _deactivate_buddy(self):
         """Instantly restores normal mouse control and hides the companion."""
+        self.cursor_hider.restore()
         self.overlay.hide()
         self.power_manager.restore_sleep()
         self.is_active = False
@@ -239,6 +245,7 @@ class CursorBuddyApp:
 
     def shutdown(self):
         print("[Buddy] Shutting down...")
+        self.cursor_hider.restore()
         self.single_instance.stop()
         self.hotkey.stop()
         self._deactivate_buddy()
