@@ -20,6 +20,7 @@ class BuddyConfig:
     show_particles: bool = True
     show_reactions: bool = True
     sound_enabled: bool = False
+    start_with_windows: bool = False
     buddy_scale: float = 1.0  # 0.8x to 1.5x
 
     @classmethod

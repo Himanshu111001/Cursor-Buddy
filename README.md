@@ -1,117 +1,131 @@
 # Animated Cursor Buddy 🖱️✨
 
-> A lightweight, delightful desktop companion that brings your Windows screen to life when you step away, and instantly disappears the moment you touch your mouse or keyboard!
+> A lightweight, delightful desktop application that brings your Windows screen to life when you step away, and instantly disappears the moment you touch your mouse or keyboard!
 
 ---
 
-## 🌟 Overview & Highlights
+## 🌟 What Makes It a Real, Useful Windows App?
 
-**Animated Cursor Buddy** is a native Windows desktop companion designed to make your workspace feel alive. 
-- While you are working, your mouse cursor operates completely as normal.
-- Whenever you pause or step away for a configurable idle timeout (e.g., 10 seconds), your choice of an animated companion awakens right at your cursor's last coordinates.
-- The companion autonomously explores your desktop, plays with boundary walls, peeks around corners, takes catnaps with floating "Zzz" bubbles, and emits playful particle effects.
-- Crucially, it prevents Windows from turning off your display while active using native Windows power management APIs.
-- The moment you nudge the mouse or press any key, the companion vanishes without a trace, immediately returning full control to you with zero lag.
-
----
-
-## 🛠️ Recommended Technology Stack
-
-For **Windows 10/11**, the optimal technology stack is **Python 3.10+ with Native Win32 APIs and a Transparent Layered Tkinter Window**:
-
-| Feature Area | Technology / API | Why It's the Best Choice |
-| :--- | :--- | :--- |
-| **Idle Detection** | `user32.dll!GetLastInputInfo` | Queries Windows kernel input timestamps directly. Detects physical hardware activity with millisecond accuracy without intrusive keylogging or hook overhead. |
-| **Power Management** | `kernel32.dll!SetThreadExecutionState` | Uses official Windows power flags (`ES_CONTINUOUS \| ES_DISPLAY_REQUIRED \| ES_SYSTEM_REQUIRED`) to keep the display awake cleanly without generating artificial input events. |
-| **Overlay Window** | Win32 Layered Window (`WS_EX_TRANSPARENT \| WS_EX_LAYERED \| WS_EX_TOOLWINDOW \| WS_EX_NOACTIVATE`) | True 100% click-through transparency. Mouse clicks pass straight through to whatever application or game is below. Won't steal window focus or clutter Alt-Tab. |
-| **Graphics & Animation** | Vector Tkinter Canvas + Double Buffering | Zero Chromium / Electron bloat (~15-25 MB RAM vs ~200+ MB for Electron). Crisp vector rendering at 60 FPS across high-DPI displays. |
-| **System Tray** | `pystray` + `Pillow` | Native Windows notification tray icon with live status indicators, instant summon button, pause/resume, and settings access. |
+**Animated Cursor Buddy** is packaged as a complete, self-contained Windows desktop utility:
+- **Standalone Windows Executable**: Bundled with PyInstaller as `AnimatedCursorBuddy.exe`—runs natively without having to open a terminal or command prompt.
+- **Desktop & Start Menu Shortcuts**: 1-click installer creates Start Menu and Desktop shortcuts with high-resolution custom icons (`.ico`).
+- **Global Hotkey (`Ctrl + Alt + B`)**: Summon or dismiss your companion anytime from any screen or game with a single keyboard shortcut.
+- **Windows Startup Integration**: Toggle "Start with Windows on boot" directly from the Settings dialog to keep your companion watching automatically.
+- **Screen Awake Protection**: Uses Win32 `SetThreadExecutionState` so your laptop display won't go to sleep while your buddy is wandering.
+- **Dual-Sensor Instant Dismiss**: Responds in < 150ms to any physical mouse movement or keystroke, immediately restoring your normal cursor with zero lag.
+- **Procedural Sound Chimes**: Optional gentle, playful rising/falling audio chimes when your buddy awakens or rests.
 
 ---
 
-## 🎭 The Companions
+## 🎭 The 4 Companion Characters
 
-The project comes with **4 built-in procedural animated companions**:
-
-1. **🤖 Sparky the Cyber Bot**: Futuristic floating robot with an animated visor, glowing cyan LED eyes that blink, an antenna alert light, dual flame thrusters, and hovering bob physics.
+1. **🤖 Sparky the Cyber Bot**: Futuristic floating robot with an animated visor, glowing cyan LED eyes that blink, an antenna alert beacon, dual flame thrusters, and hovering bob physics.
 2. **👻 Mochi the Ghost**: Adorable squishy spirit with wavy floating skirts, squash-and-stretch body deformation, kawaii anime eyes, and blush cheeks.
 3. **🐱 Neko the Desktop Cat**: Playful ginger kitten with animated trotting paws, a swishing tail, perky ears, cute whiskers, and napping animations with "Zzz" bubbles.
-4. **🧚 Starlight Fairy**: Mystical fairy with fluttering gossamer wings, an iridescent glowing aura, and sparkling star trails that weave across the display.
+4. **🧚 Starlight Fairy**: Mystical fairy with fast-fluttering gossamer wings, an iridescent glowing core halo, and sparkling stardust particle trails.
 
 ---
 
-## 🚀 Quick Setup & Usage
+## 🚀 How to Run & Use
 
-### 1. Requirements
-Ensure Python 3.10+ is installed on your Windows machine. Standard packages required:
-```bash
-pip install -r requirements.txt
+### Option 1: Double-Click the Desktop Shortcut (Recommended)
+An **"Animated Cursor Buddy"** shortcut has already been installed directly to your **Desktop** and **Start Menu**. Just double-click it!
+
+### Option 2: Run the Standalone Compiled Executable
+Navigate to:
 ```
-*(Dependencies: `pywin32`, `pystray`, `pillow`)*
+dist\AnimatedCursorBuddy\AnimatedCursorBuddy.exe
+```
+This is a self-contained, windowed executable with zero terminal popups.
 
-### 2. Launching the Companion
-Double-click `run.bat` or run from PowerShell / Command Prompt:
-```bash
-# Normal background mode (watches for idle)
+### Option 3: Silent Background Runner
+Double-click `CursorBuddy.vbs` to launch silently in the background.
+
+### Option 4: From PowerShell / Command Prompt
+```powershell
+# Normal idle watch mode
 python main.py
 
-# Launch directly with the Settings & Customization dialog open
-python main.py --settings
-
-# Instant Test Mode (summons the companion right away without waiting)
+# Instant summon (test mode)
 python main.py --test
+
+# Open Settings & Live Character Preview dialog
+python main.py --settings
 ```
 
 ---
 
-## ⚙️ Customization & Controls
+## ⌨️ Shortcuts & Controls
 
-Access the **Settings Dialog** by right-clicking the system tray icon and selecting **Settings...**, or passing `--settings` on startup:
-
-- **Character Selection**: Choose between Sparky, Mochi, Neko, or Starlight Fairy with a **Live Preview Window**.
-- **Idle Timeout**: Configure the inactivity trigger delay (3s to 120s).
-- **Movement Speed**: Slow (chill wander), Normal (balanced), or Fast (energetic dashes).
-- **Physical Cursor Control**: Toggle whether the companion actively guides the real Windows mouse pointer or roams independently.
-- **Power Management**: Toggle whether the display stays awake while the companion is active.
-- **Particles & Reactions**: Enable/disable thruster sparks, stardust, curiosity marks (`?`), and sleep bubbles (`zzz`).
-
-### System Tray Quick Actions
-Right-click the cursor buddy icon in the Windows taskbar tray:
-- **🚀 Summon Buddy Now**: Wake the companion immediately.
-- **⏸ Pause / ▶ Resume Buddy**: Temporarily disable without quitting.
-- **⚙ Settings...**: Open the full customization dialog.
-- **❌ Exit**: Cleanly close the application and restore normal system power states.
+| Action | Control |
+| :--- | :--- |
+| **Summon / Dismiss Companion** | **`Ctrl + Alt + B`** (Global Hotkey from anywhere) |
+| **Instant Interruption** | Move physical mouse or press any key |
+| **System Tray Actions** | Right-click tray icon -> *Summon Buddy*, *Pause/Resume*, *Settings*, *Exit* |
+| **Customize & Tune** | Open **Settings...** from tray or pass `--settings` |
 
 ---
 
-## 📁 Architecture & File Layout
+## ⚙️ Customization Settings
+
+Open the **Settings Dialog** to configure:
+* **Companion Selector**: Switch between Robot, Ghost, Cat, or Fairy with a **Live Preview Canvas**.
+* **Idle Activation Delay**: Slider from 3 seconds up to 120 seconds.
+* **Movement Speed**: Slow, Normal, or Fast wandering.
+* **Cursor Mode**: Choose whether the companion physically guides your mouse pointer or roams freely.
+* **Start with Windows**: Automatically launch on Windows boot.
+* **Display Keep-Awake**: Keep your laptop screen illuminated while the companion is active.
+* **Particle FX & Reactions**: Toggle thruster sparks, stardust, question marks (`?`), and sleep bubbles (`zzz`).
+* **Audio Chimes**: Toggle pleasant procedural synth tones on wake and sleep.
+
+---
+
+## 🔨 Building & Re-bundling
+
+To re-compile the standalone executable or update shortcuts at any time:
+```powershell
+# 1-Click build standalone EXE
+.\build.bat
+
+# Or rebuild via Python
+python build_exe.py
+
+# Refresh Desktop and Start Menu shortcuts
+python install_shortcuts.py
+```
+
+---
+
+## 📁 Project Architecture
 
 ```
 calm-hubble/
-├── main.py                     # Main coordinator, state machine & 60 FPS loop
-├── config.py                   # Persistent settings manager (config.json)
-├── requirements.txt            # Python dependencies
-├── run.bat                     # Windows 1-click launcher
-├── run.ps1                     # PowerShell launcher
+├── dist/AnimatedCursorBuddy/    # Standalone compiled Windows application
+├── main.py                      # Core coordinator, state machine & 60 FPS loop
+├── config.py                    # Persistent JSON preferences manager
+├── CursorBuddy.vbs              # Silent background launcher
+├── install_shortcuts.py         # Desktop & Start Menu shortcut installer
+├── generate_assets.py           # Multi-resolution app icon generator
+├── build_exe.py                 # PyInstaller standalone build pipeline
+├── build.bat                    # 1-click executable builder
+├── run.bat                      # 1-click Python runner
 ├── system/
-│   ├── idle_detector.py        # Win32 GetLastInputInfo idle detection
-│   └── power_manager.py        # Win32 SetThreadExecutionState keep-awake
+│   ├── idle_detector.py         # Win32 GetLastInputInfo idle detection
+│   ├── power_manager.py         # Win32 SetThreadExecutionState display keep-awake
+│   ├── autostart.py             # Windows Registry autostart integration
+│   ├── hotkey.py                # Global Ctrl+Alt+B keyboard hook
+│   └── audio.py                 # Async procedural sound effects
 ├── engine/
-│   ├── movement.py             # Organic AI steering, waypoints, bounce & curiosity
-│   ├── overlay_window.py       # Win32 layered click-through canvas window
-│   └── particles.py            # Spark, stardust, and sleep bubble particle system
+│   ├── movement.py              # Organic AI steering, waypoints, bounce & curiosity
+│   ├── overlay_window.py        # Win32 layered click-through canvas window
+│   └── particles.py             # Sparks, stardust, reaction bubbles
 ├── characters/
-│   ├── base_character.py       # Abstract base character interface
-│   ├── robot.py                # 🤖 Sparky the Cyber Bot
-│   ├── ghost.py                # 👻 Mochi the Ghost
-│   ├── cat.py                  # 🐱 Neko the Desktop Cat
-│   └── fairy.py                # 🧚 Starlight Fairy
+│   ├── base_character.py        # Abstract character interface
+│   ├── robot.py                 # 🤖 Sparky the Cyber Bot
+│   ├── ghost.py                 # 👻 Mochi the Ghost
+│   ├── cat.py                   # 🐱 Neko the Desktop Cat
+│   └── fairy.py                 # 🧚 Starlight Fairy
 └── ui/
-    ├── settings_dialog.py      # Modern dark-theme GUI with live character preview
-    └── tray.py                 # System tray controller with status icon
+    ├── settings_dialog.py       # Dark-themed GUI with live preview & autostart
+    └── tray.py                  # System tray controller with status icon
 ```
-
----
-
-## 🛡️ License
-Released under the MIT License. Feel free to extend with new characters and behaviors!

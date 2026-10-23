@@ -3,18 +3,30 @@ System Tray controller for Animated Cursor Buddy.
 Runs quietly in the Windows notification area with control menus.
 """
 
+import os
 from typing import Callable
 from PIL import Image, ImageDraw
 import pystray
 
 
 def create_tray_icon_image(is_active: bool = False, is_paused: bool = False) -> Image.Image:
-    """Generate a high-res crisp tray icon."""
+    """Generate or adapt high-res crisp tray icon."""
+    icon_path = os.path.join(os.path.dirname(__file__), "..", "assets", "icon.png")
+    if os.path.exists(icon_path):
+        try:
+            base = Image.open(icon_path).convert("RGBA").resize((64, 64), Image.Resampling.LANCZOS)
+            d = ImageDraw.Draw(base)
+            # Add state status badge in bottom-right corner
+            badge_color = "#ED8796" if is_paused else ("#A6DA95" if is_active else "#8AADF4")
+            d.ellipse((44, 44, 62, 62), fill=badge_color, outline="#181926", width=2)
+            return base
+        except Exception:
+            pass
+
     size = 64
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # Base circle
     bg_color = "#363A4F"
     if is_paused:
         bg_color = "#ED8796"
@@ -23,7 +35,6 @@ def create_tray_icon_image(is_active: bool = False, is_paused: bool = False) -> 
 
     d.ellipse((4, 4, 60, 60), fill=bg_color, outline="#CAD3F5", width=3)
 
-    # Stylized mouse arrow inside
     arrow_pts = [
         (22, 16),
         (22, 44),
@@ -34,11 +45,8 @@ def create_tray_icon_image(is_active: bool = False, is_paused: bool = False) -> 
         (44, 32),
     ]
     d.polygon(arrow_pts, fill="#FFFFFF", outline="#181926")
-
-    # Sparkling dot
     sparkle_color = "#FFD700" if is_active else "#8AADF4"
     d.ellipse((44, 12, 54, 22), fill=sparkle_color)
-
     return img
 
 
@@ -72,7 +80,7 @@ class SystemTrayManager:
         return pystray.Menu(
             pystray.MenuItem(f"Cursor Buddy ({status_text})", lambda: None, enabled=False),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("🚀 Summon Buddy Now", lambda: self.on_test_now()),
+            pystray.MenuItem("🚀 Summon Buddy (Ctrl+Alt+B)", lambda: self.on_test_now()),
             pystray.MenuItem(pause_label, lambda: self.on_toggle_pause()),
             pystray.MenuItem("⚙ Settings...", lambda: self.on_open_settings()),
             pystray.Menu.SEPARATOR,

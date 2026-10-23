@@ -22,7 +22,7 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 from characters import get_character
 from config import BuddyConfig
 from engine import MovementEngine, OverlayWindow, ParticleSystem
-from system import IdleDetector, PowerManager
+from system import GlobalHotkeyListener, IdleDetector, PowerManager, SoundManager
 from ui import SettingsDialog, SystemTrayManager
 
 
@@ -37,6 +37,11 @@ class CursorBuddyApp:
         self.idle_detector = IdleDetector()
         self.power_manager = PowerManager()
         self.particles = ParticleSystem()
+        self.sound = SoundManager(enabled=self.config.sound_enabled)
+
+        # Global Hotkey (Ctrl + Alt + B)
+        self.hotkey = GlobalHotkeyListener(on_hotkey=self._on_hotkey_threadsafe)
+        self.hotkey.start()
 
         # Virtual screen metrics
         vx = win32api.GetSystemMetrics(win32con.SM_XVIRTUALSCREEN)
@@ -93,7 +98,18 @@ class CursorBuddyApp:
         self.active_character = get_character(self.config.character)
         self.overlay.set_character(self.active_character)
         self.movement.set_speed_profile(self.config.movement_speed)
+        self.sound.enabled = self.config.sound_enabled
         print(f"[Buddy] Updated settings: character={self.config.character}, timeout={self.config.idle_timeout_seconds}s")
+
+    def _on_hotkey_threadsafe(self):
+        self.root.after(0, self._on_hotkey_toggle)
+
+    def _on_hotkey_toggle(self):
+        """Hotkey Ctrl+Alt+B pressed: toggle wake/dismiss."""
+        if self.is_active:
+            self._deactivate_buddy()
+        else:
+            self._on_summon_buddy()
 
     def _open_settings_threadsafe(self):
         self.root.after(0, self.settings_dialog.show)
@@ -133,6 +149,7 @@ class CursorBuddyApp:
         self.is_active = True
         self.force_wake = False
         self.tray.update_state(is_active=True, is_paused=self.is_paused)
+        self.sound.play_wake()
         print("[Buddy] ✨ Desktop companion is now active and roaming!")
 
     def _deactivate_buddy(self):
@@ -142,6 +159,7 @@ class CursorBuddyApp:
         self.is_active = False
         self.force_wake = False
         self.tray.update_state(is_active=False, is_paused=self.is_paused)
+        self.sound.play_sleep()
         print("[Buddy] 👋 User returned! Restoring standard cursor control.")
 
     def _tick(self):
@@ -203,6 +221,7 @@ class CursorBuddyApp:
 
     def shutdown(self):
         print("[Buddy] Shutting down...")
+        self.hotkey.stop()
         self._deactivate_buddy()
         self.tray.stop()
         self.root.destroy()

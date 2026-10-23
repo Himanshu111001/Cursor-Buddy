@@ -3,11 +3,13 @@ Modern dark-themed Settings & Customization Dialog for Animated Cursor Buddy.
 Includes live preview canvas, sliders, character cards, and behavior toggles.
 """
 
+import os
 import time
 import tkinter as tk
 from tkinter import ttk
 from characters import CHARACTERS, get_character
 from config import BuddyConfig
+from system import is_autostart_enabled, set_autostart
 
 
 class SettingsDialog:
@@ -38,16 +40,24 @@ class SettingsDialog:
 
         self.window = tk.Toplevel(self.parent)
         self.window.title("Animated Cursor Buddy - Settings")
-        self.window.geometry("540x660")
+        self.window.geometry("540x720")
         self.window.resizable(False, False)
         self.window.configure(bg=self.BG_DARK)
         self.window.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        # Set window icon if available
+        icon_path = os.path.join(os.path.dirname(__file__), "..", "assets", "icon.ico")
+        if os.path.exists(icon_path):
+            try:
+                self.window.iconbitmap(icon_path)
+            except Exception:
+                pass
 
         # Center on primary monitor
         sw = self.window.winfo_screenwidth()
         sh = self.window.winfo_screenheight()
         x = (sw - 540) // 2
-        y = (sh - 660) // 2
+        y = (sh - 720) // 2
         self.window.geometry(f"+{x}+{y}")
 
         self._build_ui()
@@ -200,12 +210,16 @@ class SettingsDialog:
         self.keep_awake_var = tk.BooleanVar(value=self.config.keep_screen_awake)
         self.particles_var = tk.BooleanVar(value=self.config.show_particles)
         self.reactions_var = tk.BooleanVar(value=self.config.show_reactions)
+        self.sound_var = tk.BooleanVar(value=self.config.sound_enabled)
+        self.autostart_var = tk.BooleanVar(value=is_autostart_enabled())
 
         for text, var in [
             ("Guide physical mouse cursor across desktop", self.move_cursor_var),
             ("Keep screen awake while buddy is active (Prevent Sleep)", self.keep_awake_var),
             ("Show particle effects (Thruster sparks, stardust, bubbles)", self.particles_var),
             ("Show playful reaction emotes (?, zzz, !)", self.reactions_var),
+            ("Play cute procedural audio chimes (Wake / Sleep)", self.sound_var),
+            ("Start Animated Cursor Buddy with Windows on boot", self.autostart_var),
         ]:
             tk.Checkbutton(
                 toggles_card,
@@ -217,7 +231,18 @@ class SettingsDialog:
                 activebackground=self.BG_CARD,
                 activeforeground=self.ACCENT,
                 selectcolor=self.BG_INPUT,
-            ).pack(anchor="w", padx=15, pady=3)
+            ).pack(anchor="w", padx=15, pady=2)
+
+        # Hotkey info banner
+        hotkey_bar = tk.Frame(self.window, bg=self.BG_DARK)
+        hotkey_bar.pack(fill="x", padx=20, pady=(2, 4))
+        tk.Label(
+            hotkey_bar,
+            text="💡 Pro-tip: Press Ctrl + Alt + B anytime to summon or dismiss your buddy!",
+            font=("Segoe UI", 8, "italic"),
+            fg=self.ACCENT,
+            bg=self.BG_DARK,
+        ).pack(anchor="w")
 
         # Bottom Action Buttons
         btn_row = tk.Frame(self.window, bg=self.BG_DARK)
@@ -293,6 +318,13 @@ class SettingsDialog:
         self.config.keep_screen_awake = self.keep_awake_var.get()
         self.config.show_particles = self.particles_var.get()
         self.config.show_reactions = self.reactions_var.get()
+        self.config.sound_enabled = self.sound_var.get()
+        
+        # Configure Windows Autostart
+        should_autostart = self.autostart_var.get()
+        self.config.start_with_windows = should_autostart
+        set_autostart(should_autostart)
+
         self.config.save()
 
         if self.on_save:
