@@ -164,19 +164,30 @@ class CursorBuddyApp:
         self.expected_cursor_x = int(self.movement.x)
         self.expected_cursor_y = int(self.movement.y)
 
+        # Synchronize timers so first frame dt is clean
+        current_time = time.time()
+        self.last_tick_time = current_time
+        self.activate_time = current_time
+
         if self.config.keep_screen_awake:
             self.power_manager.prevent_sleep(keep_display_on=True)
 
-        self.overlay.show()
         if self.config.hide_default_cursor and self.config.move_physical_cursor:
             self.cursor_hider.hide()
 
+        # Position and pre-render overlay window BEFORE making it visible
+        self.overlay.show(
+            initial_x=self.movement.x,
+            initial_y=self.movement.y,
+            state=self.movement.state,
+            facing_right=self.movement.facing_right,
+        )
+
         self.is_active = True
         self.force_wake = False
-        self.activate_time = time.time()
         self.tray.update_state(is_active=True, is_paused=self.is_paused)
         self.sound.play_wake()
-        print("[Buddy] ✨ Desktop companion is now active and roaming!")
+        print(f"[Buddy] ✨ Activated smoothly at cursor position ({int(self.movement.x)}, {int(self.movement.y)})")
 
     def _deactivate_buddy(self):
         """Instantly restores normal mouse control and hides the companion."""

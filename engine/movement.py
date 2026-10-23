@@ -1,6 +1,6 @@
 """
 Autonomous movement and behavioral AI engine for the desktop companion.
-Generates organic, entertaining trajectories strictly confined within usable screen bounds.
+Maintains smooth organic trajectories and zero-offset resets upon idle activation.
 """
 
 import math
@@ -16,7 +16,7 @@ class MovementEngine:
 
     def __init__(self, bounds: tuple[int, int, int, int]):
         """
-        bounds: (min_x, min_y, max_x, max_y) of usable work area (excluding taskbar).
+        bounds: (left, top, right, bottom) of usable work area (excluding taskbar).
         """
         self.set_bounds(bounds)
 
@@ -39,12 +39,17 @@ class MovementEngine:
         self.total_idle_time = 0.0
 
         # Speed configurations
-        self.base_speed = 4.0
+        self.base_speed = 3.8
         self.set_speed_profile("normal")
 
     def set_bounds(self, bounds: tuple[int, int, int, int]):
         left, top, right, bottom = bounds
-        self.margin = 55  # Safe distance inside screen bezels and above taskbar
+        self.bounds_left = left
+        self.bounds_top = top
+        self.bounds_right = right
+        self.bounds_bottom = bottom
+
+        self.margin = 55  # Safe distance for waypoints inside bezels and above taskbar
         self.min_x = left + self.margin
         self.min_y = top + self.margin
         self.max_x = max(self.min_x + 100, right - self.margin)
@@ -59,9 +64,13 @@ class MovementEngine:
             self.base_speed = 3.8
 
     def reset_to_position(self, x: float, y: float):
-        """Reset companion to a specific position (e.g. current mouse position), strictly clamped."""
-        self.x = min(max(x, self.min_x), self.max_x)
-        self.y = min(max(y, self.min_y), self.max_y)
+        """
+        Aligns companion position directly with the current physical mouse coordinates.
+        Does not clamp to interior margin to prevent sudden jumping upon wake.
+        """
+        # Guard strictly against off-screen bounds while keeping exact mouse coordinates
+        self.x = min(max(float(x), self.bounds_left), self.bounds_right)
+        self.y = min(max(float(y), self.bounds_top), self.bounds_bottom)
         self.vx = 0.0
         self.vy = 0.0
         self.state = self.STATE_WANDERING
@@ -70,12 +79,12 @@ class MovementEngine:
         self._pick_new_target()
 
     def _pick_new_target(self):
-        """Pick an engaging destination strictly within screen work area bounds."""
+        """Pick an engaging destination strictly within comfortable screen bounds."""
         dice = random.random()
         if dice < 0.25:
-            # Peek near a corner of the usable screen area
-            corner_x = random.choice([self.min_x + 30, self.max_x - 30])
-            corner_y = random.choice([self.min_y + 30, self.max_y - 30])
+            # Corner inspection point
+            corner_x = random.choice([self.min_x + 25, self.max_x - 25])
+            corner_y = random.choice([self.min_y + 25, self.max_y - 25])
             self.target_x = min(max(corner_x + random.uniform(-15, 15), self.min_x), self.max_x)
             self.target_y = min(max(corner_y + random.uniform(-15, 15), self.min_y), self.max_y)
         else:
@@ -112,9 +121,9 @@ class MovementEngine:
         self.x += self.vx
         self.y += self.vy
 
-        # Strictly clamp within bezels and above taskbar
-        self.x = min(max(self.x, self.min_x), self.max_x)
-        self.y = min(max(self.y, self.min_y), self.max_y)
+        # Confine strictly within screen work area
+        self.x = min(max(self.x, self.bounds_left), self.bounds_right)
+        self.y = min(max(self.y, self.bounds_top), self.bounds_bottom)
 
         # Update facing direction
         if abs(self.vx) > 0.2:
@@ -128,7 +137,6 @@ class MovementEngine:
         dist = math.hypot(dx, dy)
 
         if dist < 25:
-            # Close enough to target, decide next move
             self.state = self.STATE_INSPECTING
             self.state_timer = 0.0
             self.state_duration = random.uniform(1.2, 2.5)
@@ -144,7 +152,7 @@ class MovementEngine:
 
     def _transition_state(self):
         self.state_timer = 0.0
-        # If idle for a long time (> 35s), chance to take a nap
+        # If idle for an extended period, chance to nap
         if self.total_idle_time > 35.0 and random.random() < 0.4:
             self.state = self.STATE_NAPPING
             self.state_duration = random.uniform(5.0, 9.0)

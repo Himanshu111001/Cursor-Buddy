@@ -1,9 +1,11 @@
 """
 Compact floating transparent sprite overlay window.
-Moves seamlessly with the companion at hardware level using true top-level OS HWND.
+Eliminates reactivation jitter by updating coordinates and pre-rendering frame
+before revealing the window on every idle activation.
 """
 
 import math
+import time
 import tkinter as tk
 import win32con
 import win32gui
@@ -42,7 +44,6 @@ class OverlayWindow:
         self.canvas.pack(fill="both", expand=True)
 
         self.window.update_idletasks()
-        # Retrieve actual top-level OS window handle (HWND)
         try:
             self.hwnd = int(self.window.wm_frame(), 16)
         except Exception:
@@ -70,12 +71,44 @@ class OverlayWindow:
     def set_character(self, character: BaseCharacter):
         self.character = character
 
-    def show(self):
-        if not self.is_visible:
-            self.window.deiconify()
-            self.window.lift()
-            self._apply_win32_styles()
-            self.is_visible = True
+    def show(self, initial_x: float, initial_y: float, state: str = "wandering", facing_right: bool = True):
+        """
+        Positions the window and pre-renders the character at initial_x, initial_y
+        BEFORE making the window visible. Guarantees zero positional jumping.
+        """
+        self.particles.clear()
+        win_x = int(initial_x - self.WINDOW_SIZE / 2)
+        win_y = int(initial_y - self.WINDOW_SIZE / 2)
+
+        # 1. Pre-position OS window while still hidden
+        win32gui.SetWindowPos(
+            self.hwnd,
+            win32con.HWND_TOPMOST,
+            win_x,
+            win_y,
+            self.WINDOW_SIZE,
+            self.WINDOW_SIZE,
+            win32con.SWP_NOACTIVATE,
+        )
+
+        # 2. Pre-render initial frame onto canvas
+        self._draw_content(win_x, win_y, state, facing_right, time.time())
+
+        # 3. Reveal window at the exact target location
+        self.window.deiconify()
+        self.window.lift()
+        self._apply_win32_styles()
+
+        win32gui.SetWindowPos(
+            self.hwnd,
+            win32con.HWND_TOPMOST,
+            win_x,
+            win_y,
+            self.WINDOW_SIZE,
+            self.WINDOW_SIZE,
+            win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW,
+        )
+        self.is_visible = True
 
     def hide(self):
         if self.is_visible:
@@ -88,7 +121,6 @@ class OverlayWindow:
         if not self.is_visible:
             return
 
-        # Position the top-level OS window centered on (x, y)
         win_x = int(x - self.WINDOW_SIZE / 2)
         win_y = int(y - self.WINDOW_SIZE / 2)
 
@@ -102,13 +134,15 @@ class OverlayWindow:
             win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW,
         )
 
+        self._draw_content(win_x, win_y, state, facing_right, time_sec)
+
+    def _draw_content(self, win_x: int, win_y: int, state: str, facing_right: bool, time_sec: float):
         self.canvas.delete("all")
 
-        # Center inside the 128x128 canvas
         cx = self.WINDOW_SIZE / 2
         cy = self.WINDOW_SIZE / 2
 
-        # 1. Particles (rendered relative to center)
+        # 1. Particles
         if self.config.show_particles:
             self.particles.update()
             for p in self.particles.particles:
@@ -144,7 +178,7 @@ class OverlayWindow:
                             font=("Segoe UI", font_size, "bold")
                         )
 
-        # 2. Draw Active Character centered in window
+        # 2. Draw character at center
         self.character.draw(
             canvas=self.canvas,
             cx=cx,
@@ -152,7 +186,7 @@ class OverlayWindow:
             state=state,
             facing_right=facing_right,
             time_sec=time_sec,
-            scale=self.config.buddy_scale * 1.25,  # Clear, vibrant visibility
+            scale=self.config.buddy_scale * 1.25,
             particles=self.particles if self.config.show_particles else None,
         )
 
