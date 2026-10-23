@@ -246,32 +246,33 @@ class CursorBuddyApp:
                 current_tick = self.idle_detector.get_last_input_tick()
                 real_x, real_y = self.idle_detector.get_cursor_position()
 
-                # For manual test summon, allow 0.35s for mouse button release
-                is_recent_manual = self.was_manual_wake and (current_time - self.activate_time < 0.35)
+                # Manual summon settling window (allows button click/release to finish cleanly)
+                is_settling = self.was_manual_wake and (current_time - self.activate_time < 0.6)
 
-                if not is_recent_manual:
+                if is_settling:
+                    # Keep syncing activation tick so the button release doesn't count as a new user return
+                    self.activation_input_tick = current_tick
+                    # If user intentionally makes a large mouse swipe (>40px), dismiss early
+                    if math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y) >= 40:
+                        user_returned = True
+                else:
                     # 1. Any hardware input (keystroke, mouse button, touchscreen tap)
-                    if current_tick != self.activation_input_tick:
+                    if (current_tick - self.activation_input_tick) & 0xFFFFFFFF > 0:
                         user_returned = True
 
                     # 2. Physical mouse movement away from buddy position
                     if self.config.move_physical_cursor:
                         nudge = math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y)
-                        if nudge >= 4:  # Physical hand movement detected
+                        if nudge >= 5:  # Physical hand movement detected
                             user_returned = True
                     else:
                         mouse_delta = math.hypot(real_x - self.last_user_cursor_x, real_y - self.last_user_cursor_y)
-                        if mouse_delta >= 3:
+                        if mouse_delta >= 4:
                             user_returned = True
 
                     # 3. User entered fullscreen video or game
                     if self.config.pause_on_fullscreen and self.media_detector.is_fullscreen_active():
                         user_returned = True
-                else:
-                    # During manual summon grace period, react to intentional mouse drag
-                    if self.config.move_physical_cursor:
-                        if math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y) >= 20:
-                            user_returned = True
 
                 if user_returned and not self.force_wake:
                     self._deactivate_buddy()

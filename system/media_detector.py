@@ -36,7 +36,7 @@ IID_IAudioMeterInformation = _parse_guid("{C02216F6-8C67-4B5B-9D00-D008E73E0064}
 
 
 class MediaDetector:
-    PEAK_THRESHOLD = 0.005  # Lower threshold to filter out digital silence/ground noise
+    PEAK_THRESHOLD = 0.02   # Threshold for audible media playback
     HOLD_TIME = 6.0         # Seconds to bridge dialogues, pauses, and quiet scenes
     CACHE_DURATION = 0.3    # Throttle checks to 3-4 times per second
 

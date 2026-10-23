@@ -242,8 +242,8 @@ class SettingsDialog:
         self.pause_fullscreen_var = tk.BooleanVar(value=self.config.pause_on_fullscreen)
 
         toggles = [
-            ("Guide mouse cursor", self.move_cursor_var),
-            ("Hide default mouse pointer", self.hide_cursor_var),
+            ("Guide mouse pointer", self.move_cursor_var),
+            ("Hide default arrow pointer", self.hide_cursor_var),
             ("Keep display awake", self.keep_awake_var),
             ("Show particle effects", self.particles_var),
             ("Play wake/sleep chimes", self.sound_var),
@@ -274,7 +274,7 @@ class SettingsDialog:
 
         test_btn = tk.Button(
             btn_bar,
-            text="🚀 Test Buddy Now",
+            text="🚀 Summon Buddy Now",
             font=("Segoe UI", 9, "bold"),
             bg="#44475A",
             fg=self.ACCENT_PINK,
@@ -291,7 +291,7 @@ class SettingsDialog:
 
         save_btn = tk.Button(
             btn_bar,
-            text="✓ Save & Apply",
+            text="✓ Save & Apply (Summon)",
             font=("Segoe UI", 9, "bold"),
             bg=self.ACCENT_GREEN,
             fg="#1E1F29",
@@ -362,12 +362,14 @@ class SettingsDialog:
         if self.on_save:
             self.on_save(self.config)
 
+        # Immediately summon buddy so user sees their chosen character in action!
+        if self.on_test:
+            self.on_test()
+
         self._on_close()
 
     def _handle_test(self):
         self._handle_save()
-        if self.on_test:
-            self.on_test()
 
     def _on_close(self):
         self._is_preview_running = False
