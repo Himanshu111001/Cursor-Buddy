@@ -26,6 +26,7 @@ from system import (
     CursorHider,
     GlobalHotkeyListener,
     IdleDetector,
+    MediaDetector,
     PowerManager,
     SingleInstanceManager,
     SoundManager,
@@ -49,6 +50,7 @@ class CursorBuddyApp:
 
         # System services
         self.idle_detector = IdleDetector()
+        self.media_detector = MediaDetector()
         self.power_manager = PowerManager()
         self.cursor_hider = CursorHider()
         self.particles = ParticleSystem()
@@ -186,6 +188,7 @@ class CursorBuddyApp:
         self.is_active = True
         self.force_wake = False
         self.tray.update_state(is_active=True, is_paused=self.is_paused)
+        self.media_detector.notify_internal_sound(0.8)
         self.sound.play_wake()
         print(f"[Buddy] ✨ Activated smoothly at cursor position ({int(self.movement.x)}, {int(self.movement.y)})")
 
@@ -197,6 +200,7 @@ class CursorBuddyApp:
         self.is_active = False
         self.force_wake = False
         self.tray.update_state(is_active=False, is_paused=self.is_paused)
+        self.media_detector.notify_internal_sound(0.8)
         self.sound.play_sleep()
         print("[Buddy] 👋 User returned! Restoring standard cursor control.")
 
@@ -208,12 +212,23 @@ class CursorBuddyApp:
         if not self.is_paused:
             idle_seconds = self.idle_detector.get_idle_seconds()
 
+            # Check if user is watching media/videos or in fullscreen
+            is_media = (
+                (self.config.pause_during_media or self.config.pause_on_fullscreen)
+                and self.media_detector.is_media_active(
+                    check_audio=self.config.pause_during_media,
+                    check_fullscreen=self.config.pause_on_fullscreen,
+                )
+            )
+
             if not self.is_active:
                 # Check if system has been idle long enough or forced summon
-                if self.force_wake or idle_seconds >= self.config.idle_timeout_seconds:
+                if self.force_wake:
+                    self._activate_buddy()
+                elif not is_media and idle_seconds >= self.config.idle_timeout_seconds:
                     self._activate_buddy()
             else:
-                # Active mode: Check if user physically touched mouse or keyboard
+                # Active mode: Check if user physically touched mouse/keyboard, or media began playing
                 user_returned = False
 
                 # Grace period: ignore input within first 600ms of activation to prevent premature dismissal
@@ -228,6 +243,10 @@ class CursorBuddyApp:
                         deviation = math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y)
                         if deviation > 20:  # Physical nudge detected
                             user_returned = True
+
+                    # 3. Media playback or fullscreen video began while companion was roaming
+                    if is_media and not self.force_wake:
+                        user_returned = True
 
                 if user_returned and not self.force_wake:
                     self._deactivate_buddy()

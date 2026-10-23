@@ -46,9 +46,9 @@ class SettingsDialog:
 
         self.window = tk.Toplevel(self.parent)
         self.window.title("Animated Cursor Buddy")
-        
+
         # Dimensions strictly designed to fit 720p/1080p laptop displays without cutting off
-        win_w, win_h = 490, 520
+        win_w, win_h = 490, 560
         self.window.geometry(f"{win_w}x{win_h}")
         self.window.resizable(False, False)
         self.window.configure(bg=self.BG_DARK)
@@ -238,6 +238,8 @@ class SettingsDialog:
         self.particles_var = tk.BooleanVar(value=self.config.show_particles)
         self.sound_var = tk.BooleanVar(value=self.config.sound_enabled)
         self.autostart_var = tk.BooleanVar(value=is_autostart_enabled())
+        self.pause_media_var = tk.BooleanVar(value=self.config.pause_during_media)
+        self.pause_fullscreen_var = tk.BooleanVar(value=self.config.pause_on_fullscreen)
 
         toggles = [
             ("Guide mouse cursor", self.move_cursor_var),
@@ -246,6 +248,8 @@ class SettingsDialog:
             ("Show particle effects", self.particles_var),
             ("Play wake/sleep chimes", self.sound_var),
             ("Launch on Windows startup", self.autostart_var),
+            ("Pause during video/media", self.pause_media_var),
+            ("Pause in fullscreen apps", self.pause_fullscreen_var),
         ]
 
         for i, (text, var) in enumerate(toggles):
@@ -346,6 +350,8 @@ class SettingsDialog:
         self.config.keep_screen_awake = self.keep_awake_var.get()
         self.config.show_particles = self.particles_var.get()
         self.config.sound_enabled = self.sound_var.get()
+        self.config.pause_during_media = self.pause_media_var.get()
+        self.config.pause_on_fullscreen = self.pause_fullscreen_var.get()
 
         should_autostart = self.autostart_var.get()
         self.config.start_with_windows = should_autostart

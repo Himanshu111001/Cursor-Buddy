@@ -23,6 +23,8 @@ class BuddyConfig:
     sound_enabled: bool = False
     start_with_windows: bool = False
     buddy_scale: float = 1.0  # 0.8x to 1.5x
+    pause_during_media: bool = True  # Pause when watching videos or playing audio
+    pause_on_fullscreen: bool = True  # Pause when in fullscreen video, game, or presentation
 
     @classmethod
     def load(cls) -> "BuddyConfig":
