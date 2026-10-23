@@ -1,6 +1,6 @@
 """
 Compact floating transparent sprite overlay window.
-Moves seamlessly with the companion at hardware level without full-screen flicker.
+Moves seamlessly with the companion at hardware level using true top-level OS HWND.
 """
 
 import math
@@ -14,23 +14,25 @@ from engine.particles import ParticleSystem
 
 class OverlayWindow:
     CHROMA_KEY = "#010101"
-    WINDOW_SIZE = 128  # Compact 128x128 sprite box
+    WINDOW_SIZE = 128  # 128x128 sprite box
 
-    def __init__(self, root: tk.Tk, config: BuddyConfig, character: BaseCharacter, particles: ParticleSystem):
-        self.root = root
+    def __init__(self, parent: tk.Tk, config: BuddyConfig, character: BaseCharacter, particles: ParticleSystem):
+        self.parent = parent
         self.config = config
         self.character = character
         self.particles = particles
         self.is_visible = False
 
-        # Borderless transparent sprite window
-        self.root.overrideredirect(True)
-        self.root.attributes("-topmost", True)
-        self.root.attributes("-transparentcolor", self.CHROMA_KEY)
-        self.root.geometry(f"{self.WINDOW_SIZE}x{self.WINDOW_SIZE}+0+0")
+        # Dedicated Toplevel overlay window
+        self.window = tk.Toplevel(self.parent)
+        self.window.overrideredirect(True)
+        self.window.attributes("-topmost", True)
+        self.window.attributes("-transparentcolor", self.CHROMA_KEY)
+        self.window.configure(bg=self.CHROMA_KEY)
+        self.window.geometry(f"{self.WINDOW_SIZE}x{self.WINDOW_SIZE}+0+0")
 
         self.canvas = tk.Canvas(
-            self.root,
+            self.window,
             width=self.WINDOW_SIZE,
             height=self.WINDOW_SIZE,
             bg=self.CHROMA_KEY,
@@ -39,37 +41,46 @@ class OverlayWindow:
         )
         self.canvas.pack(fill="both", expand=True)
 
-        self._hwnd = self.root.winfo_id()
+        self.window.update_idletasks()
+        # Retrieve actual top-level OS window handle (HWND)
+        try:
+            self.hwnd = int(self.window.wm_frame(), 16)
+        except Exception:
+            self.hwnd = win32gui.GetParent(self.window.winfo_id()) or self.window.winfo_id()
+
         self._apply_win32_styles()
 
         # Start hidden
-        self.root.withdraw()
+        self.window.withdraw()
 
     def _apply_win32_styles(self):
-        hwnd = self.root.winfo_id()
-        gwl = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-        target_style = (
-            gwl
-            | win32con.WS_EX_LAYERED
-            | win32con.WS_EX_TRANSPARENT  # Click-through: mouse clicks pass to whatever is beneath
-            | win32con.WS_EX_TOOLWINDOW    # Hides from Alt-Tab
-            | win32con.WS_EX_NOACTIVATE    # Never steals keyboard/mouse focus
-        )
-        win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, target_style)
+        try:
+            gwl = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)
+            target_style = (
+                gwl
+                | win32con.WS_EX_LAYERED
+                | win32con.WS_EX_TRANSPARENT  # Mouse clicks pass to windows underneath
+                | win32con.WS_EX_TOOLWINDOW    # Hides from Alt-Tab
+                | win32con.WS_EX_NOACTIVATE    # Never steals focus
+            )
+            win32gui.SetWindowLong(self.hwnd, win32con.GWL_EXSTYLE, target_style)
+        except Exception as e:
+            print(f"[Overlay] Error applying win32 styles: {e}")
 
     def set_character(self, character: BaseCharacter):
         self.character = character
 
     def show(self):
         if not self.is_visible:
-            self.root.deiconify()
+            self.window.deiconify()
+            self.window.lift()
             self._apply_win32_styles()
             self.is_visible = True
 
     def hide(self):
         if self.is_visible:
             self.canvas.delete("all")
-            self.root.withdraw()
+            self.window.withdraw()
             self.particles.clear()
             self.is_visible = False
 
@@ -77,18 +88,18 @@ class OverlayWindow:
         if not self.is_visible:
             return
 
-        # Position the 128x128 window directly centered on the companion coordinate
+        # Position the top-level OS window centered on (x, y)
         win_x = int(x - self.WINDOW_SIZE / 2)
         win_y = int(y - self.WINDOW_SIZE / 2)
 
         win32gui.SetWindowPos(
-            self.root.winfo_id(),
+            self.hwnd,
             win32con.HWND_TOPMOST,
             win_x,
             win_y,
-            0,
-            0,
-            win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW,
+            self.WINDOW_SIZE,
+            self.WINDOW_SIZE,
+            win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW,
         )
 
         self.canvas.delete("all")
@@ -133,7 +144,7 @@ class OverlayWindow:
                             font=("Segoe UI", font_size, "bold")
                         )
 
-        # 2. Draw Character at center
+        # 2. Draw Active Character centered in window
         self.character.draw(
             canvas=self.canvas,
             cx=cx,
@@ -141,16 +152,16 @@ class OverlayWindow:
             state=state,
             facing_right=facing_right,
             time_sec=time_sec,
-            scale=self.config.buddy_scale,
+            scale=self.config.buddy_scale * 1.25,  # Clear, vibrant visibility
             particles=self.particles if self.config.show_particles else None,
         )
 
         # 3. Emote reaction bubble (? or !)
         if self.config.show_reactions and state == "inspecting":
             self.canvas.create_text(
-                cx + (14 if facing_right else -14),
-                cy - 38 * self.config.buddy_scale,
+                cx + (16 if facing_right else -16),
+                cy - 42 * self.config.buddy_scale,
                 text="?",
                 fill="#FFD700",
-                font=("Segoe UI", 15, "bold"),
+                font=("Segoe UI", 16, "bold"),
             )

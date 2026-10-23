@@ -65,9 +65,10 @@ class CursorBuddyApp:
 
         # Tkinter Root & Overlay Window
         self.root = tk.Tk()
+        self.root.withdraw()  # Root stays permanently hidden as coordinator
         self.active_character = get_character(self.config.character)
         self.overlay = OverlayWindow(
-            root=self.root,
+            parent=self.root,
             config=self.config,
             character=self.active_character,
             particles=self.particles,
@@ -91,6 +92,7 @@ class CursorBuddyApp:
 
         # Tracking state
         self.last_tick_time = time.time()
+        self.activate_time = 0.0
         self.expected_cursor_x = 0
         self.expected_cursor_y = 0
 
@@ -161,6 +163,7 @@ class CursorBuddyApp:
         self.overlay.show()
         self.is_active = True
         self.force_wake = False
+        self.activate_time = time.time()
         self.tray.update_state(is_active=True, is_paused=self.is_paused)
         self.sound.play_wake()
         print("[Buddy] ✨ Desktop companion is now active and roaming!")
@@ -191,16 +194,18 @@ class CursorBuddyApp:
                 # Active mode: Check if user physically touched mouse or keyboard
                 user_returned = False
 
-                # 1. Hardware input event within last 250ms
-                if self.idle_detector.is_user_active(threshold_ms=250):
-                    user_returned = True
-
-                # 2. Physical mouse moved away from where companion placed it
-                if self.config.move_physical_cursor:
-                    real_x, real_y = self.idle_detector.get_cursor_position()
-                    deviation = math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y)
-                    if deviation > 20:  # Physical nudge detected
+                # Grace period: ignore input within first 600ms of activation to prevent premature dismissal
+                if (current_time - self.activate_time) > 0.6:
+                    # 1. Hardware input event within last 250ms
+                    if self.idle_detector.is_user_active(threshold_ms=250):
                         user_returned = True
+
+                    # 2. Physical mouse moved away from where companion placed it
+                    if self.config.move_physical_cursor:
+                        real_x, real_y = self.idle_detector.get_cursor_position()
+                        deviation = math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y)
+                        if deviation > 20:  # Physical nudge detected
+                            user_returned = True
 
                 if user_returned and not self.force_wake:
                     self._deactivate_buddy()
