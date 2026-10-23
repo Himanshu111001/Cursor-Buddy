@@ -364,14 +364,34 @@ class SettingsDialog:
         if self.on_save:
             self.on_save(self.config)
 
-        # Immediately summon buddy so user sees their new character in action!
+        self._on_close()
+
+    def _handle_test(self):
+        # Save current settings and immediately summon buddy for instant preview
+        self.config.character = self.selected_char
+        self.config.idle_timeout_seconds = self.timeout_var.get()
+        self.config.movement_speed = self.speed_var.get()
+        self.config.move_physical_cursor = self.move_cursor_var.get()
+        self.config.hide_default_cursor = self.hide_cursor_var.get()
+        self.config.keep_screen_awake = self.keep_awake_var.get()
+        self.config.show_particles = self.particles_var.get()
+        self.config.sound_enabled = self.sound_var.get()
+        self.config.pause_during_media = self.pause_media_var.get()
+        self.config.pause_on_fullscreen = self.pause_fullscreen_var.get()
+
+        should_autostart = self.autostart_var.get()
+        self.config.start_with_windows = should_autostart
+        set_autostart(should_autostart)
+
+        self.config.save()
+
+        if self.on_save:
+            self.on_save(self.config)
+
         if self.on_test:
             self.on_test()
 
         self._on_close()
-
-    def _handle_test(self):
-        self._handle_save()
 
     def _on_close(self):
         self._is_preview_running = False

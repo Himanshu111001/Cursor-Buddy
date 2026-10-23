@@ -10,6 +10,7 @@ import time
 import win32api
 import win32con
 import win32gui
+import win32process
 
 
 class GUID(Structure):
@@ -177,13 +178,78 @@ class MediaDetector:
 
         return False
 
-    def is_media_active(self, check_audio: bool = True, check_fullscreen: bool = True) -> bool:
-        """Throttled composite check combining audio playback and fullscreen detection."""
+    def is_video_foreground_active(self) -> bool:
+        """
+        Returns True if the active foreground window belongs to a video/media player
+        or a web browser playing a streaming video site (YouTube, Netflix, etc.).
+        """
+        try:
+            hwnd = win32gui.GetForegroundWindow()
+            if not hwnd or not win32gui.IsWindow(hwnd) or not win32gui.IsWindowVisible(hwnd):
+                return False
+
+            cls = win32gui.GetClassName(hwnd)
+            if cls in ("Progman", "WorkerW", "Shell_TrayWnd", "Button"):
+                return False
+
+            title = win32gui.GetWindowText(hwnd).lower()
+
+            # Check known media player process names
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            if pid:
+                h_proc = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+                if h_proc:
+                    try:
+                        buf = ctypes.create_unicode_buffer(512)
+                        sz = ctypes.c_ulong(512)
+                        if ctypes.windll.kernel32.QueryFullProcessImageNameW(h_proc, 0, buf, ctypes.byref(sz)):
+                            import os
+                            exe = os.path.basename(buf.value).lower()
+                            media_players = {
+                                "vlc.exe", "mpc-hc.exe", "mpc-hc64.exe", "potplayer.exe",
+                                "potplayer64.exe", "mpv.exe", "wmplayer.exe", "kmplayer.exe",
+                                "gom.exe", "netflix.exe",
+                            }
+                            if exe in media_players:
+                                return True
+                            if exe == "applicationframehost.exe":
+                                if any(k in title for k in ("media player", "movies & tv", "films & tv")):
+                                    return True
+                    finally:
+                        ctypes.windll.kernel32.CloseHandle(h_proc)
+
+            # Check known streaming video keywords in foreground browser/window titles
+            video_keywords = (
+                "youtube", "netflix", "prime video", "twitch", "disney+",
+                "hulu", "vimeo", "crunchyroll", "hotstar", "jiocinema",
+                "dailymotion", "bilibili", "hbomax", "max.com", "peacock",
+                "apple tv"
+            )
+            if any(k in title for k in video_keywords):
+                return True
+
+        except Exception:
+            pass
+
+        return False
+
+    def is_media_active(self, check_audio: bool = False, check_fullscreen: bool = True) -> bool:
+        """
+        Throttled composite check combining fullscreen detection and active video/media playback.
+        Background audio alone (e.g. Spotify or music) will not suppress the companion unless
+        the user is actually viewing video or in fullscreen.
+        """
         now = time.time()
         if now - self._last_check_time >= self.CACHE_DURATION:
             self._last_check_time = now
-            self._cached_audio = self.is_audio_playing() if check_audio else False
             self._cached_fullscreen = self.is_fullscreen_active() if check_fullscreen else False
+            if check_audio:
+                # Video/media playback requires active audio AND an active video window
+                audio_playing = self.is_audio_playing()
+                video_window = self.is_video_foreground_active()
+                self._cached_audio = audio_playing and video_window
+            else:
+                self._cached_audio = False
 
         if check_fullscreen and self._cached_fullscreen:
             return True

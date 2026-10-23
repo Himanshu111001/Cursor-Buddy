@@ -173,6 +173,8 @@ class CursorBuddyApp:
         self.movement.reset_to_position(cur_x, cur_y)
         self.expected_cursor_x = int(self.movement.x)
         self.expected_cursor_y = int(self.movement.y)
+        if self.config.move_physical_cursor:
+            self.idle_detector.set_cursor_position(self.expected_cursor_x, self.expected_cursor_y)
 
         # Synchronize timers so first frame dt is clean
         current_time = time.time()
@@ -246,14 +248,19 @@ class CursorBuddyApp:
                 current_tick = self.idle_detector.get_last_input_tick()
                 real_x, real_y = self.idle_detector.get_cursor_position()
 
-                # Manual summon settling window (allows button click/release to finish cleanly)
-                is_settling = self.was_manual_wake and (current_time - self.activate_time < 0.6)
+                # Settling window: 0.6s for manual summon (allows click release), 0.15s for idle wake
+                is_manual_settling = self.was_manual_wake and (current_time - self.activate_time < 0.6)
+                is_idle_settling = (current_time - self.activate_time < 0.15)
 
-                if is_settling:
+                if is_manual_settling:
                     # Keep syncing activation tick so the button release doesn't count as a new user return
                     self.activation_input_tick = current_tick
                     # If user intentionally makes a large mouse swipe (>40px), dismiss early
                     if math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y) >= 40:
+                        user_returned = True
+                elif is_idle_settling:
+                    # Brief settling window on idle wake to absorb subpixel mouse sensor jitter
+                    if math.hypot(real_x - self.expected_cursor_x, real_y - self.expected_cursor_y) >= 15:
                         user_returned = True
                 else:
                     # 1. Any hardware input (keystroke, mouse button, touchscreen tap)

@@ -10,6 +10,6 @@
     "sound_enabled": false,
     "start_with_windows": false,
     "buddy_scale": 1.0,
-    "pause_during_media": true,
+    "pause_during_media": false,
     "pause_on_fullscreen": true
 }
