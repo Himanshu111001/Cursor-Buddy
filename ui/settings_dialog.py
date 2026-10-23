@@ -34,7 +34,10 @@ class SettingsDialog:
 
     def show(self):
         if self.window is not None and self.window.winfo_exists():
+            self.window.deiconify()
             self.window.lift()
+            self.window.attributes("-topmost", True)
+            self.window.after_idle(lambda: self.window.attributes("-topmost", False))
             self.window.focus_force()
             return
 
@@ -44,6 +47,11 @@ class SettingsDialog:
         self.window.resizable(False, False)
         self.window.configure(bg=self.BG_DARK)
         self.window.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        # Force window to top once shown
+        self.window.lift()
+        self.window.attributes("-topmost", True)
+        self.window.after_idle(lambda: self.window.attributes("-topmost", False))
 
         # Set window icon if available
         icon_path = os.path.join(os.path.dirname(__file__), "..", "assets", "icon.ico")

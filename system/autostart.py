@@ -16,7 +16,7 @@ def _get_launch_command() -> str:
     """Returns the appropriate command to launch silently on boot."""
     if getattr(sys, "frozen", False):
         # Compiled PyInstaller executable
-        return f'"{sys.executable}"'
+        return f'"{sys.executable}" --silent'
     else:
         # Python script: use pythonw.exe to avoid console window
         python_exe = sys.executable
@@ -25,7 +25,7 @@ def _get_launch_command() -> str:
             pythonw_exe = python_exe
 
         main_py = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "main.py"))
-        return f'"{pythonw_exe}" "{main_py}"'
+        return f'"{pythonw_exe}" "{main_py}" --silent'
 
 
 def is_autostart_enabled() -> bool:

@@ -41,10 +41,15 @@ def install_shortcuts():
     created = []
     for loc_name, folder in shortcut_locations.items():
         shortcut_file = os.path.join(folder, "Animated Cursor Buddy.lnk")
+        if os.path.exists(shortcut_file):
+            try:
+                os.remove(shortcut_file)
+            except Exception:
+                pass
+
         shortcut = shell.CreateShortCut(shortcut_file)
         shortcut.TargetPath = target_path
-        if arguments:
-            shortcut.Arguments = arguments
+        shortcut.Arguments = arguments or ""
         shortcut.WorkingDirectory = project_dir
         shortcut.Description = "Animated Cursor Buddy - Interactive Desktop Companion"
         if os.path.exists(icon_path):

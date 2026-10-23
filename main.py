@@ -22,12 +22,24 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 from characters import get_character
 from config import BuddyConfig
 from engine import MovementEngine, OverlayWindow, ParticleSystem
-from system import GlobalHotkeyListener, IdleDetector, PowerManager, SoundManager
+from system import (
+    GlobalHotkeyListener,
+    IdleDetector,
+    PowerManager,
+    SingleInstanceManager,
+    SoundManager,
+)
 from ui import SettingsDialog, SystemTrayManager
 
 
 class CursorBuddyApp:
     def __init__(self, initial_test_mode: bool = False, open_settings_on_start: bool = False):
+        # Single-instance check
+        self.single_instance = SingleInstanceManager()
+        if not self.single_instance.check_or_register(on_wake_signal=self._open_settings_threadsafe):
+            # Another instance is already running and was signaled to focus.
+            sys.exit(0)
+
         self.config = BuddyConfig.load()
         self.is_active = False
         self.is_paused = False
@@ -221,6 +233,7 @@ class CursorBuddyApp:
 
     def shutdown(self):
         print("[Buddy] Shutting down...")
+        self.single_instance.stop()
         self.hotkey.stop()
         self._deactivate_buddy()
         self.tray.stop()
@@ -232,9 +245,13 @@ def main():
     parser = argparse.ArgumentParser(description="Animated Cursor Buddy")
     parser.add_argument("--test", action="store_true", help="Start buddy immediately without waiting for idle")
     parser.add_argument("--settings", action="store_true", help="Open the settings window on launch")
-    args = parser.parse_args()
+    parser.add_argument("--silent", action="store_true", help="Start silently in background tray without opening settings")
+    args, _ = parser.parse_known_args()
 
-    app = CursorBuddyApp(initial_test_mode=args.test, open_settings_on_start=args.settings)
+    # Open settings on launch by default unless --silent or --test is given
+    open_settings = args.settings or (not args.silent and not args.test)
+
+    app = CursorBuddyApp(initial_test_mode=args.test, open_settings_on_start=open_settings)
     app.run()
 
 
