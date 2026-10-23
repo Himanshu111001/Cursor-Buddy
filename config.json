@@ -1,0 +1,11 @@
+{
+    "idle_timeout_seconds": 10,
+    "character": "robot",
+    "movement_speed": "normal",
+    "move_physical_cursor": true,
+    "keep_screen_awake": true,
+    "show_particles": true,
+    "show_reactions": true,
+    "sound_enabled": false,
+    "buddy_scale": 1.0
+}

@@ -1,0 +1,5 @@
+# Animated Cursor Buddy Dependencies
+# Standard libraries used: tkinter, ctypes, math, time, json, dataclasses
+pywin32>=306
+pystray>=0.19.5
+pillow>=10.0.0
