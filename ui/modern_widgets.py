@@ -1,7 +1,7 @@
 """
 Modern, sleek Fluent/macOS-inspired custom Tkinter widgets for Animated Cursor Buddy.
-Includes smooth canvas-rendered switches, sliders, segmented pills, character cards,
-compact toggle rows, and Windows 11 DWM immersive dark theming.
+Engineered for industry-level desktop applications: fully responsive, high-DPI scaling,
+dynamic resize-friendly canvas elements, and Windows 11 DWM immersive dark theming.
 """
 
 from __future__ import annotations
@@ -13,12 +13,12 @@ from typing import Any, Callable, Sequence
 
 # Ultra-Modern Obsidian & Electric Indigo Palette
 PALETTE = {
-    "bg_window": "#0C0D14",
+    "bg_window": "#0B0C13",
     "bg_card": "#131622",
-    "bg_card_inner": "#1A1D2E",
-    "bg_hover": "#21253B",
-    "border": "#222638",
-    "border_light": "#323850",
+    "bg_card_inner": "#181C2C",
+    "bg_hover": "#1F2438",
+    "border": "#21263A",
+    "border_light": "#2F3652",
     "accent": "#6366F1",        # Electric Indigo
     "accent_hover": "#4F46E5",
     "accent_glow": "#818CF8",
@@ -27,13 +27,13 @@ PALETTE = {
     "text_main": "#F8FAFC",
     "text_muted": "#94A3B8",
     "text_dim": "#64748B",
-    "btn_secondary": "#1A1D2C",
-    "btn_secondary_border": "#2A3047",
-    "btn_secondary_hover": "#252A40",
+    "btn_secondary": "#181B2B",
+    "btn_secondary_border": "#2A314A",
+    "btn_secondary_hover": "#22273D",
 }
 
 
-def apply_dwm_dark_theme(window: tk.Toplevel | tk.Tk, bg_color_hex: str = "#0C0D14"):
+def apply_dwm_dark_theme(window: tk.Toplevel | tk.Tk, bg_color_hex: str = "#0B0C13"):
     """
     Applies Windows 11 / Windows 10 DWM immersive dark mode and caption styling
     so the OS title bar seamlessly integrates with the dark theme.
@@ -64,7 +64,7 @@ def apply_dwm_dark_theme(window: tk.Toplevel | tk.Tk, bg_color_hex: str = "#0C0D
         dwmapi.DwmSetWindowAttribute(hwnd, 36, ctypes.byref(text_color), ctypes.sizeof(text_color))
 
         # 4. DWMWA_BORDER_COLOR (34) - Border color
-        border_color = ctypes.c_int(0x00382622)
+        border_color = ctypes.c_int(0x003A2621)
         dwmapi.DwmSetWindowAttribute(hwnd, 34, ctypes.byref(border_color), ctypes.sizeof(border_color))
     except Exception:
         pass
@@ -114,8 +114,8 @@ class ModernSwitch(tk.Canvas):
         parent: tk.Widget,
         variable: tk.BooleanVar,
         command: Callable[[], None] | None = None,
-        width: int = 34,
-        height: int = 18,
+        width: int = 36,
+        height: int = 19,
         bg: str = PALETTE["bg_card"],
         accent: str = PALETTE["accent"],
     ):
@@ -173,10 +173,11 @@ class ModernSwitch(tk.Canvas):
             self.command()
 
 
-class CompactToggleRow(tk.Frame):
+class SpaciousToggleRow(tk.Frame):
     """
-    Compact, modern single-line settings row with icon, title, and ModernSwitch.
-    Hovering highlights the row; clicking anywhere toggles the switch.
+    Spacious, industry-standard modern settings row with Icon Badge,
+    Bold Title, Descriptive Subtitle, and a responsive ModernSwitch.
+    Hovering highlights the row; clicking anywhere on the row toggles the switch.
     """
 
     def __init__(
@@ -184,6 +185,7 @@ class CompactToggleRow(tk.Frame):
         parent: tk.Widget,
         icon: str,
         title: str,
+        subtitle: str,
         variable: tk.BooleanVar,
         command: Callable[[], None] | None = None,
         bg: str = PALETTE["bg_card"],
@@ -194,16 +196,49 @@ class CompactToggleRow(tk.Frame):
         self.bg_default = bg
         self.bg_hover = PALETTE["bg_hover"]
 
-        # Label: Icon + Title
-        self.lbl = tk.Label(
+        # Left Icon Badge
+        self.icon_badge = tk.Frame(
             self,
-            text=f"{icon}  {title}",
-            font=("Segoe UI", 8, "bold"),
+            bg=PALETTE["bg_card_inner"],
+            highlightbackground=PALETTE["border"],
+            highlightthickness=1,
+            width=28,
+            height=28,
+        )
+        self.icon_badge.pack_propagate(False)
+        self.icon_badge.pack(side="left", padx=(8, 8), pady=3)
+
+        self.icon_lbl = tk.Label(
+            self.icon_badge,
+            text=icon,
+            font=("Segoe UI Emoji", 10),
+            bg=PALETTE["bg_card_inner"],
+        )
+        self.icon_lbl.pack(expand=True)
+
+        # Text container
+        self.text_frame = tk.Frame(self, bg=bg)
+        self.text_frame.pack(side="left", fill="x", expand=True, padx=(0, 6), pady=3)
+
+        self.title_lbl = tk.Label(
+            self.text_frame,
+            text=title,
+            font=("Segoe UI", 9, "bold"),
             fg=PALETTE["text_main"],
             bg=bg,
             anchor="w",
         )
-        self.lbl.pack(side="left", fill="x", expand=True, padx=(8, 4), pady=4)
+        self.title_lbl.pack(fill="x")
+
+        self.sub_lbl = tk.Label(
+            self.text_frame,
+            text=subtitle,
+            font=("Segoe UI", 7, "normal"),
+            fg=PALETTE["text_muted"],
+            bg=bg,
+            anchor="w",
+        )
+        self.sub_lbl.pack(fill="x")
 
         # Switch
         self.switch = ModernSwitch(
@@ -211,24 +246,29 @@ class CompactToggleRow(tk.Frame):
             variable=self.variable,
             command=self._on_toggled,
             bg=bg,
-            width=34,
-            height=18,
+            width=36,
+            height=19,
         )
-        self.switch.pack(side="right", padx=(4, 8), pady=4)
+        self.switch.pack(side="right", padx=(4, 10), pady=3)
 
-        for widget in (self, self.lbl):
+        # Bind hover and click across all children
+        for widget in (self, self.icon_badge, self.icon_lbl, self.text_frame, self.title_lbl, self.sub_lbl):
             widget.bind("<Enter>", self._on_enter)
             widget.bind("<Leave>", self._on_leave)
             widget.bind("<Button-1>", self._on_click)
 
     def _on_enter(self, event=None):
         self.configure(bg=self.bg_hover)
-        self.lbl.configure(bg=self.bg_hover)
+        self.text_frame.configure(bg=self.bg_hover)
+        self.title_lbl.configure(bg=self.bg_hover)
+        self.sub_lbl.configure(bg=self.bg_hover)
         self.switch.set_bg(self.bg_hover)
 
     def _on_leave(self, event=None):
         self.configure(bg=self.bg_default)
-        self.lbl.configure(bg=self.bg_default)
+        self.text_frame.configure(bg=self.bg_default)
+        self.title_lbl.configure(bg=self.bg_default)
+        self.sub_lbl.configure(bg=self.bg_default)
         self.switch.set_bg(self.bg_default)
 
     def _on_click(self, event=None):
@@ -244,6 +284,7 @@ class CompactToggleRow(tk.Frame):
 class ModernSlider(tk.Canvas):
     """
     Fluid canvas slider with accent progress fill and circular knob.
+    Automatically adapts to dynamic window resizing via <Configure>.
     """
 
     def __init__(
@@ -253,7 +294,7 @@ class ModernSlider(tk.Canvas):
         from_: int = 3,
         to: int = 60,
         command: Callable[[int], None] | None = None,
-        height: int = 22,
+        height: int = 24,
         bg: str = PALETTE["bg_card"],
         accent: str = PALETTE["accent"],
     ):
@@ -269,9 +310,9 @@ class ModernSlider(tk.Canvas):
         self.from_ = from_
         self.to = to
         self.command = command
-        self.w = 200
+        self.w = 300
         self.h = height
-        self.padding = 8
+        self.padding = 10
         self.accent = accent
 
         self.bind("<Configure>", self._on_configure)
@@ -281,7 +322,7 @@ class ModernSlider(tk.Canvas):
         self.var.trace_add("write", lambda *_: self.render())
 
     def _on_configure(self, event):
-        if event.width > 20:
+        if event.width > 20 and event.width != self.w:
             self.w = event.width
             self.render()
 
@@ -323,7 +364,7 @@ class ModernSlider(tk.Canvas):
             self.w - self.padding,
             cy,
             fill=PALETTE["bg_card_inner"],
-            width=5,
+            width=6,
             capstyle="round",
         )
         # Active progress track
@@ -334,15 +375,15 @@ class ModernSlider(tk.Canvas):
                 thumb_x,
                 cy,
                 fill=self.accent,
-                width=5,
+                width=6,
                 capstyle="round",
             )
         # Circular knob
         self.create_oval(
-            thumb_x - 6.5,
-            cy - 6.5,
-            thumb_x + 6.5,
-            cy + 6.5,
+            thumb_x - 7.5,
+            cy - 7.5,
+            thumb_x + 7.5,
+            cy + 7.5,
             fill="#FFFFFF",
             outline=PALETTE["accent_hover"],
             width=2,
@@ -352,6 +393,7 @@ class ModernSlider(tk.Canvas):
 class SegmentedPill(tk.Frame):
     """
     Modern segmented control / pill bar for options like [Slow | Normal | Fast].
+    Fully responsive with generous touch targets.
     """
 
     def __init__(
@@ -368,17 +410,17 @@ class SegmentedPill(tk.Frame):
         self.command = command
         self.buttons: dict[str, tk.Label] = {}
 
-        self.container = tk.Frame(self, bg=PALETTE["bg_card_inner"], padx=2, pady=2)
+        self.container = tk.Frame(self, bg=PALETTE["bg_card_inner"], padx=3, pady=3)
         self.container.pack(fill="x")
 
         for key, label, emoji in self.options:
             btn = tk.Label(
                 self.container,
                 text=f"{emoji} {label}",
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 9, "bold"),
                 cursor="hand2",
-                padx=8,
-                pady=3,
+                padx=12,
+                pady=6,
             )
             btn.pack(side="left", fill="x", expand=True, padx=2)
             btn.bind("<Button-1>", lambda e, k=key: self._select(k))
@@ -409,8 +451,8 @@ class SegmentedPill(tk.Frame):
 
 class CompanionCard(tk.Canvas):
     """
-    Rich interactive character tile featuring the actual custom-drawn companion avatar,
-    name, persona, active glow border, and status badge.
+    Spacious interactive character tile featuring custom-drawn companion avatar,
+    bold name, subtitle, active glow border, and dynamic responsive resizing.
     """
 
     def __init__(
@@ -422,12 +464,10 @@ class CompanionCard(tk.Canvas):
         character_instance: Any,
         is_selected: bool,
         on_click: Callable[[str], None],
-        width: int = 120,
-        height: int = 68,
+        height: int = 76,
     ):
         super().__init__(
             parent,
-            width=width,
             height=height,
             bg=PALETTE["bg_window"],
             highlightthickness=0,
@@ -440,14 +480,19 @@ class CompanionCard(tk.Canvas):
         self.character = character_instance
         self.is_selected = is_selected
         self.on_click = on_click
-        self.w = width
+        self.w = 140
         self.h = height
         self.is_hovered = False
 
+        self.bind("<Configure>", self._on_configure)
         self.bind("<Button-1>", self._handle_click)
         self.bind("<Enter>", self._handle_enter)
         self.bind("<Leave>", self._handle_leave)
-        self.render()
+
+    def _on_configure(self, event):
+        if event.width > 20:
+            self.w = event.width
+            self.render()
 
     def set_selected(self, selected: bool):
         if self.is_selected != selected:
@@ -486,7 +531,7 @@ class CompanionCard(tk.Canvas):
             1,
             self.w - 1,
             self.h - 1,
-            7,
+            8,
             fill=bg_color,
             outline=border_color,
             width=border_w,
@@ -494,8 +539,8 @@ class CompanionCard(tk.Canvas):
 
         # Selected corner indicator
         if self.is_selected:
-            self.create_oval(self.w - 12, 5, self.w - 5, 12, fill=PALETTE["accent"], outline="")
-            self.create_oval(self.w - 10, 7, self.w - 7, 10, fill="#FFFFFF", outline="")
+            self.create_oval(self.w - 14, 6, self.w - 6, 14, fill=PALETTE["accent"], outline="")
+            self.create_oval(self.w - 12, 8, self.w - 8, 12, fill="#FFFFFF", outline="")
 
         # Draw character avatar centered at top
         if self.character:
@@ -503,11 +548,11 @@ class CompanionCard(tk.Canvas):
                 self.character.draw(
                     canvas=self,
                     cx=self.w / 2.0,
-                    cy=20,
+                    cy=23,
                     state="idle",
                     facing_right=True,
                     time_sec=0.5,
-                    scale=0.5,
+                    scale=0.52,
                     particles=None,
                 )
             except Exception:
@@ -516,16 +561,16 @@ class CompanionCard(tk.Canvas):
         # Name
         self.create_text(
             self.w / 2.0,
-            44,
+            48,
             text=self.name,
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
             fill="#FFFFFF" if self.is_selected else PALETTE["text_main"],
         )
 
         # Subtitle / Persona
         self.create_text(
             self.w / 2.0,
-            57,
+            63,
             text=self.persona,
             font=("Segoe UI", 7, "normal"),
             fill=PALETTE["accent_glow"] if self.is_selected else PALETTE["text_muted"],
@@ -542,8 +587,8 @@ class ModernButton(tk.Canvas):
         parent: tk.Widget,
         text: str,
         command: Callable[[], None],
-        width: int = 150,
-        height: int = 36,
+        width: int = 160,
+        height: int = 40,
         is_primary: bool = False,
         bg_parent: str = PALETTE["bg_window"],
     ):
@@ -591,7 +636,7 @@ class ModernButton(tk.Canvas):
 
     def render(self):
         self.delete("all")
-        r = 7
+        r = 8
         if self.is_primary:
             if self.is_pressed:
                 fill = "#4338CA"
@@ -616,6 +661,6 @@ class ModernButton(tk.Canvas):
             self.w / 2.0,
             self.h / 2.0,
             text=self.text,
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 10, "bold"),
             fill=text_color,
         )
