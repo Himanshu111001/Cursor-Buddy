@@ -75,6 +75,7 @@ Open the **Settings Dialog** to configure:
 * **Cursor Mode**: Choose whether the companion physically guides your mouse pointer or roams freely.
 * **Start with Windows**: Automatically launch on Windows boot.
 * **Display Keep-Awake**: Keep your laptop screen illuminated while the companion is active.
+* **Smart Media & Fullscreen Suppression**: Automatically pause the companion during YouTube/Netflix playback or fullscreen games.
 * **Particle FX & Reactions**: Toggle thruster sparks, stardust, question marks (`?`), and sleep bubbles (`zzz`).
 * **Audio Chimes**: Toggle pleasant procedural synth tones on wake and sleep.
 
@@ -111,9 +112,11 @@ calm-hubble/
 ├── run.bat                      # 1-click Python runner
 ├── system/
 │   ├── idle_detector.py         # Win32 GetLastInputInfo idle detection
+│   ├── media_detector.py        # Windows CoreAudio & fullscreen playback detector
 │   ├── power_manager.py         # Win32 SetThreadExecutionState display keep-awake
 │   ├── autostart.py             # Windows Registry autostart integration
 │   ├── hotkey.py                # Global Ctrl+Alt+B keyboard hook
+│   ├── cursor_hider.py          # Native cursor variant suppression
 │   └── audio.py                 # Async procedural sound effects
 ├── engine/
 │   ├── movement.py              # Organic AI steering, waypoints, bounce & curiosity

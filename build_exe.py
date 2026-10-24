@@ -40,6 +40,7 @@ def build():
         "--hidden-import=win32api",
         "--hidden-import=win32con",
         "--hidden-import=win32com",
+        "--hidden-import=win32process",
         "--clean",
         "main.py",
     ]
