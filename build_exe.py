@@ -12,6 +12,13 @@ def build():
     project_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(project_dir)
 
+    # Always ensure system cursors are restored in case an active buddy instance was terminated
+    try:
+        import ctypes
+        ctypes.windll.user32.SystemParametersInfoW(0x0057, 0, None, 0)
+    except Exception:
+        pass
+
     # 1. Ensure assets are generated
     icon_ico = os.path.join(project_dir, "assets", "icon.ico")
     if not os.path.exists(icon_ico):
